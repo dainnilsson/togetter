@@ -1,0 +1,20 @@
+{
+  "name": "shopping",
+  "version": "0.0.0",
+  "authors": [
+    "Dain Nilsson <dain@yubico.com>"
+  ],
+  "license": "BSD",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "paper-elements": "Polymer/paper-elements#~0.3.3",
+    "slip": "~1.1.0"
+  }
+}
