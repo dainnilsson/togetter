@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html ng-app="shopping">
+  <head>
+    <link rel="stylesheet" href="/components/bootstrap/dist/css/bootstrap.css">
+
+    <script src="/components/angular/angular.js"></script>
+    <script src="/components/angular-bootstrap/ui-bootstrap.js"></script>
+    <script src="/components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="/components/slip/slip.js"></script>
+  </head>
+  <body ng-controller="ShoppingController">
+    <input type="text" ng-model="select" typeahead="item for item in filter_ingredients($viewValue)" typeahead-wait-ms="500" ng-enter="on_select()" class="form-control">
+    
+    <ul ng-repeat="item in items">
+      <li>{{ item }}</li>
+    </ul>
+
+    <script>
+      var app = angular.module('shopping', ['ui.bootstrap']);
+
+      app.controller('ShoppingController', function($scope, $http, $cacheFactory) {
+        var cache = $cacheFactory('autocompletes', { number: 25 });
+        $scope.select = undefined;
+        $scope.on_select = function() {
+          $http.post('/api/koZdveiwZ/lists/0yuN0hZWc/', null, {
+            params: {
+              'action': 'add',
+	      'item': $scope.select
+	    }
+          }).success(function(res) {
+	    $scope.items.push($scope.select);
+	    $scope.select = undefined;
+          });
+	}
+	$scope.filter_ingredients = function(viewValue) {
+	  if(cache.get(viewValue)) {
+	    return cache.get(viewValue);
+	  } else {
+	    return $http.post('/api/koZdveiwZ/ingredients/', null, {
+              params: { 'query': viewValue }
+            }).then(function(res) {
+              res.data.unshift(viewValue);
+	      cache.put(viewValue, res.data);
+              return res.data;
+            });
+	  }
+	};
+	$scope.items = [];
+      });
+
+      app.directive('ngEnter', function () {
+        return function (scope, element, attrs) {
+          element.bind("keydown keypress", function (event) {
+            if(event.which === 13) {
+              scope.$apply(function (){
+                scope.$eval(attrs.ngEnter);
+              });
+
+              event.preventDefault();
+            }
+          });
+        };
+      });
+    </script>
+  </body>
+</html>

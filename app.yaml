@@ -5,5 +5,11 @@ api_version: 1
 threadsafe: true
 
 handlers:
-- url: /.*
-  script: main.application
+- url: /components
+  static_dir: bower_components
+
+- url: /ui
+  static_dir: static
+
+- url: /api/.*
+  script: api.application

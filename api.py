@@ -31,7 +31,8 @@ class StoreHandler(BaseHandler):
 class ListIndexHandler(BaseHandler):
     def get(self, group_id):
         lists = get_group(group_id).lists
-        self.return_json(map(lambda k, v: {'id': k, 'label': v}, lists.items()))
+        result = map(lambda k, v: {'id': k, 'label': v}, lists.items())
+        self.return_json(result)
 
 
 class ListHandler(BaseHandler):
@@ -53,16 +54,29 @@ class ListHandler(BaseHandler):
             _list.remove_item(item_id)
         elif action == 'collect':
             item_id = self.request.get('item')
-            existing = Item.get_by_id(item_id, parent=list_key)
-            existing.collected = True
-            existing.put()
+            _list.collect(item_id)
         elif action == 'clear':
-            keys = Item.query(ancestor=_list.list_key).fetch(keys_only=True)
-            ndb.delete_multi(keys)
+            _list.clear()
         elif action == 'reorder':
-            item = self.request.get('item')
+            item_id = self.request.get('item')
             prev_item = self.request.get('prev')
             next_item = self.request.get('next')
-            _list.reorder(item, prev_item, next_item)
+            _list.reorder(item_id, prev_item, next_item)
         else:
             print "UNKNOWN ACTION: %r" % action
+
+
+class IngredientHandler(BaseHandler):
+    def post(self, group_id):
+        result = get_group(group_id).autocomplete(self.request.get('query'))
+        self.return_json(result)
+
+
+application = webapp2.WSGIApplication([
+    webapp2.Route('/api/create', GroupIndexHandler),
+    webapp2.Route('/api/<group_id>/', handler=GroupHandler),
+    webapp2.Route('/api/<group_id>/stores/<store_id>/', handler=StoreHandler),
+    webapp2.Route('/api/<group_id>/lists/', handler=ListIndexHandler),
+    webapp2.Route('/api/<group_id>/lists/<list_id>/', handler=ListHandler),
+    webapp2.Route('/api/<group_id>/ingredients/', handler=IngredientHandler)
+], debug=True)

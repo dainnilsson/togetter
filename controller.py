@@ -1,6 +1,6 @@
 from google.appengine.ext import ndb
-from model import Group, List, Item, Store, Ordering
-from util import encode_id, decode_id
+from model import Group, List, Item, Store, Ordering, Ingredient
+from util import encode_id, decode_id, normalize
 
 
 # Signed 64-bit integer
@@ -80,8 +80,10 @@ class GroupController(BaseController):
     def data(self):
         return {
             'label': self.label,
-            'lists': map(lambda (k, v): {'id': k, 'label': v}, self.lists.items()),
-            'stores': map(lambda (k, v): {'id': k, 'label': v}, self.stores.items())
+            'lists': map(lambda (k, v): {'id': k, 'label': v},
+                         self.lists.items()),
+            'stores': map(lambda (k, v): {'id': k, 'label': v},
+                          self.stores.items())
         }
 
     def list(self, list_id):
@@ -108,6 +110,15 @@ class GroupController(BaseController):
     def create_store(self, label="Store"):
         store = Store(parent=self.key, label=label)
         return self.store(encode_id(store.put().id()))
+
+    def autocomplete(self, partial):
+        q = Ingredient.query(ancestor=self.key)
+        if partial:
+            start = normalize(partial)
+            end = start + u'\ufffd'
+            q = q.filter(Ingredient.words >= start,
+                         Ingredient.words < end)
+        return map(lambda x: x.id(), q.fetch(10, keys_only=True))
 
 
 class ListController(BaseController):
@@ -152,6 +163,9 @@ class ListController(BaseController):
                 id=item_id,
                 amount=amount,
                 position=pos).put()
+            if not Ingredient.query(ancestor=self.group.key) \
+                    .filter(Ingredient.normalized == normalize(item_id)).get():
+                Ingredient(parent=self.group.key, id=item_id).put()
 
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()
@@ -171,9 +185,9 @@ class ListController(BaseController):
         self.entity.put()
 
     def reorder(self, item_id, prev=None, next=None):
-        prev_pos = Item.get_by_id(prev, self.key).position \
+        prev_pos = Item.get_by_id(prev, parent=self.key).position \
             if prev else MIN_POS
-        next_pos = Item.get_by_id(next, self.key).position \
+        next_pos = Item.get_by_id(next, parent=self.key).position \
             if next else MAX_POS
         item = Item.get_by_id(item_id, self.key)
         item.position = (prev_pos >> 1) + (next_pos >> 1)
@@ -183,6 +197,15 @@ class ListController(BaseController):
             ordering = Ordering.get_by_id(item_id, parent=store)
             ordering.position = item.position
             ordering.put()
+
+    def collect(self, item_id):
+        existing = Item.get_by_id(item_id, parent=self.key)
+        existing.collected = True
+        existing.put()
+
+    def clear(self):
+        keys = Item.query(ancestor=self.key).fetch(keys_only=True)
+        ndb.delete_multi(keys)
 
 
 class StoreController(BaseController):
