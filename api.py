@@ -1,5 +1,4 @@
-from controller import create_group, get_group
-from google.appengine.ext import ndb
+from controller import create_group, get_group, EntityNotFoundError
 import webapp2
 import json
 
@@ -45,25 +44,31 @@ class ListHandler(BaseHandler):
     def post(self, group_id, list_id):
         _list = get_group(group_id).list(list_id)
         action = self.request.get('action')
-        if action == 'add':
-            item_id = self.request.get('item')
-            amount = int(self.request.get('amount', '1'))
-            _list.add_item(item_id, amount)
-        elif action == 'remove':
-            item_id = self.request.get('item')
-            _list.remove_item(item_id)
-        elif action == 'collect':
-            item_id = self.request.get('item')
-            _list.collect(item_id)
-        elif action == 'clear':
-            _list.clear()
-        elif action == 'reorder':
-            item_id = self.request.get('item')
-            prev_item = self.request.get('prev')
-            next_item = self.request.get('next')
-            _list.reorder(item_id, prev_item, next_item)
-        else:
-            print "UNKNOWN ACTION: %r" % action
+        try:
+            if action == 'add':
+                item_id = self.request.get('item')
+                amount = int(self.request.get('amount', '1'))
+                _list.add_item(item_id, amount)
+            elif action == 'remove':
+                item_id = self.request.get('item')
+                _list.remove_item(item_id)
+            elif action == 'update':
+                item = _list.item(self.request.get('item'))
+                if 'collected' in self.request.arguments():
+                    item.collected = json.loads(self.request.get('collected'))
+                if 'amount' in self.request.arguments():
+                    item.amount = int(self.request.get('amount'))
+            elif action == 'clear':
+                _list.clear()
+            elif action == 'reorder':
+                item_id = self.request.get('item')
+                prev_item = self.request.get('prev')
+                next_item = self.request.get('next')
+                _list.reorder(item_id, prev_item, next_item)
+            else:
+                print "UNKNOWN ACTION: %r" % action
+        except EntityNotFoundError:
+            self.abort(404)
 
 
 class IngredientHandler(BaseHandler):

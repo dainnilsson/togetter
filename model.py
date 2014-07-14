@@ -8,6 +8,7 @@ class Group(ndb.Model):  # Root entity
 
 
 class Ingredient(ndb.Model):  # Group as parent
+    normalized = ndb.ComputedProperty(lambda self: normalize(self.key.id()))
     words = ndb.ComputedProperty(lambda self: [
         normalize(word) for word in self.key.id().split()], repeated=True)
 

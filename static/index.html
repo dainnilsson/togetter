@@ -7,16 +7,56 @@
     <script src="/components/angular-bootstrap/ui-bootstrap.js"></script>
     <script src="/components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
     <script src="/components/slip/slip.js"></script>
+    <style>
+.slip-reordering {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+}
+
+.slip-swiping-container {
+    overflow-x: hidden;
+}
+
+li {
+   user-select: none;
+   -moz-user-select: none;
+   -webkit-user-select: none;
+   cursor: default;
+}
+
+ul {
+    clear:left;
+    margin: 1em;
+    padding: 0 0 1px;
+}
+
+li {
+    display:block;
+    border: 1px solid black;
+    background: white;
+    margin: 0; padding: 0 1em;
+    border-radius: 3px;
+    margin-bottom: -1px;
+    max-width: 100%;
+    line-height: 3;
+    vertical-align: middle;
+}
+    </style>
   </head>
   <body ng-controller="ShoppingController">
     <input type="text" ng-model="select" typeahead="item for item in filter_ingredients($viewValue)" typeahead-wait-ms="500" ng-enter="on_select()" class="form-control">
     
-    <ul ng-repeat="item in items">
-      <li>{{ item }}</li>
+    <ul ng-reorderable on-reorder="reorder($event)">
+      <li ng-repeat="item in items" ng-item="{{ item.item }}">
+        <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
+        {{ item.item }}
+	<input type="number" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+      </li>
     </ul>
 
     <script>
       var app = angular.module('shopping', ['ui.bootstrap']);
+      var groupId = 'koZdveiwZ';
+      var listId = '0yuN0hZWc';
 
       app.controller('ShoppingController', function($scope, $http, $cacheFactory) {
         var cache = $cacheFactory('autocompletes', { number: 25 });
@@ -28,8 +68,12 @@
 	      'item': $scope.select
 	    }
           }).success(function(res) {
+            for(var i=$scope.select.length; i>0; i--) {
+	      cache.remove($scope.select.substr(0, i));
+	    }
 	    $scope.items.push($scope.select);
 	    $scope.select = undefined;
+	    $scope.refresh_items();
           });
 	}
 	$scope.filter_ingredients = function(viewValue) {
@@ -39,18 +83,63 @@
 	    return $http.post('/api/koZdveiwZ/ingredients/', null, {
               params: { 'query': viewValue }
             }).then(function(res) {
-              res.data.unshift(viewValue);
+              if(res.data.length > 0 && res.data.indexOf(viewValue) == -1) {
+                res.data.unshift(viewValue);
+	      }
 	      cache.put(viewValue, res.data);
               return res.data;
             });
 	  }
 	};
 	$scope.items = [];
+	$scope.refresh_items = function() {
+	  $http.get('/api/koZdveiwZ/lists/0yuN0hZWc/').success(function(res) {
+            $scope.items = res;
+	  });
+	};
+
+	$scope.refresh_items();
+
+	$scope.reorder = function(e) {
+	  var original = e.detail.originalIndex;
+	  var splice = e.detail.spliceIndex;
+	  if(original == splice) {
+            return;
+	  } else if(original > splice) {
+	    splice--;
+	  }
+          var item = $scope.items[original];
+	  var prev = $scope.items[splice];
+	  var next = $scope.items[splice+1];
+	  console.log("REORDER", item, prev, next);
+          $http.post('/api/koZdveiwZ/lists/0yuN0hZWc/', null, {
+            params: {
+	      'action': 'reorder',
+	      'item': item ? item.item : undefined,
+	      'prev': prev ? prev.item : undefined,
+	      'next': next ? next.item : undefined
+	    }
+          }).then(function(res) {
+	    $scope.refresh_items();
+          });
+	};
+
+	$scope.update_item = function(item) {
+          console.log(item);
+          $http.post('/api/koZdveiwZ/lists/0yuN0hZWc/', null, {
+            params: {
+	      'action': 'update',
+	      'item': item.item,
+	      'amount': item.amount,
+	      'collected': item.collected
+	    }
+	  });
+	};
       });
 
       app.directive('ngEnter', function () {
-        return function (scope, element, attrs) {
-          element.bind("keydown keypress", function (event) {
+        return function(scope, element, attrs) {
+          element.bind("keydown keypress", function(event) {
             if(event.which === 13) {
               scope.$apply(function (){
                 scope.$eval(attrs.ngEnter);
@@ -59,6 +148,21 @@
               event.preventDefault();
             }
           });
+        };
+      });
+
+      app.directive('ngReorderable', function($parse) {
+        return function(scope, element, attrs) {
+	  new Slip(element[0]);
+	  var fn = $parse(attrs.onReorder);
+	  element.bind("slip:reorder", function(event) {
+            event.target.parentNode.insertBefore(event.target, event.detail.insertBefore);
+            scope.$apply(function() {
+              fn(scope, {$event:event});
+            });
+
+	    return false;
+	  });
         };
       });
     </script>

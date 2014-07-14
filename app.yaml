@@ -13,3 +13,7 @@ handlers:
 
 - url: /api/.*
   script: api.application
+
+- url: /.*
+  static_files: static/index.html
+  upload: static/index.html

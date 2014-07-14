@@ -22,6 +22,12 @@ def get_group(group_id):
     return GroupController(ndb.Key(Group, decode_id(group_id)))
 
 
+class EntityNotFoundError(Exception):
+    def __init__(self, key):
+        super(EntityNotFoundError, self).__init__("Entity does not exist: %r" % key)
+        self.key = key
+
+
 class BaseController(object):
 
     def __init__(self, key):
@@ -32,6 +38,8 @@ class BaseController(object):
     def entity(self):
         if not self._entity:
             self._entity = self.key.get()
+            if self._entity is None:
+                raise EntityNotFoundError(self.key)
         return self._entity
 
     @property
@@ -126,6 +134,7 @@ class ListController(BaseController):
     def __init__(self, group, key):
         super(ListController, self).__init__(key)
         self.group = group
+        self._items = {}
 
     @property
     def items(self):
@@ -166,6 +175,15 @@ class ListController(BaseController):
             if not Ingredient.query(ancestor=self.group.key) \
                     .filter(Ingredient.normalized == normalize(item_id)).get():
                 Ingredient(parent=self.group.key, id=item_id).put()
+        return self.item(item_id)
+
+    def item(self, item_id):
+        if item_id not in self._items:
+            item = ItemController(self, ndb.Key(Item, item_id,
+                                                parent=self.key))
+            self._items[item_id] = item
+            return item
+        return self._items[item_id]
 
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()
@@ -198,14 +216,34 @@ class ListController(BaseController):
             ordering.position = item.position
             ordering.put()
 
-    def collect(self, item_id):
-        existing = Item.get_by_id(item_id, parent=self.key)
-        existing.collected = True
-        existing.put()
-
     def clear(self):
         keys = Item.query(ancestor=self.key).fetch(keys_only=True)
         ndb.delete_multi(keys)
+
+
+class ItemController(BaseController):
+
+    def __init__(self, _list, key):
+        super(ItemController, self).__init__(key)
+        self.list = _list
+
+    @property
+    def collected(self):
+        return self.entity.collected
+
+    @collected.setter
+    def collected(self, collected):
+        self.entity.collected = collected
+        self.entity.put()
+
+    @property
+    def amount(self):
+        return self.entity.amount
+
+    @amount.setter
+    def amount(self, amount):
+        self.entity.amount = amount
+        self.entity.put()
 
 
 class StoreController(BaseController):
