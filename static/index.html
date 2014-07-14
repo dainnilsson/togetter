@@ -95,6 +95,7 @@ li {
 	$scope.refresh_items = function() {
 	  $http.get('/api/koZdveiwZ/lists/0yuN0hZWc/').success(function(res) {
             $scope.items = res;
+	    console.log("Items refreshed!");
 	  });
 	};
 
@@ -103,15 +104,11 @@ li {
 	$scope.reorder = function(e) {
 	  var original = e.detail.originalIndex;
 	  var splice = e.detail.spliceIndex;
-	  if(original == splice) {
-            return;
-	  } else if(original > splice) {
-	    splice--;
-	  }
           var item = $scope.items[original];
-	  var prev = $scope.items[splice];
+	  $scope.items.splice(original, 1);
+	  $scope.items.splice(splice, 0, item);
+	  var prev = $scope.items[splice-1];
 	  var next = $scope.items[splice+1];
-	  console.log("REORDER", item, prev, next);
           $http.post('/api/koZdveiwZ/lists/0yuN0hZWc/', null, {
             params: {
 	      'action': 'reorder',
@@ -119,7 +116,7 @@ li {
 	      'prev': prev ? prev.item : undefined,
 	      'next': next ? next.item : undefined
 	    }
-          }).then(function(res) {
+          }).error(function(data, status, headers, config) {
 	    $scope.refresh_items();
           });
 	};
@@ -133,6 +130,8 @@ li {
 	      'amount': item.amount,
 	      'collected': item.collected
 	    }
+          }).error(function(data, status, headers, config) {
+	    $scope.refresh_items();
 	  });
 	};
       });

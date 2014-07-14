@@ -5,15 +5,15 @@ api_version: 1
 threadsafe: true
 
 handlers:
-- url: /components
+- url: /vendor
   static_dir: bower_components
 
-- url: /ui
+- url: /static
   static_dir: static
 
 - url: /api/.*
   script: api.application
 
 - url: /.*
-  static_files: static/index.html
-  upload: static/index.html
+  static_files: static/app.html
+  upload: static/app.html

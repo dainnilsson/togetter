@@ -1,0 +1,9 @@
+<input type="text" ng-model="select" typeahead="item for item in filter_ingredients($viewValue)" typeahead-wait-ms="500" ng-enter="on_select()" class="form-control">
+    
+<ul ng-reorderable on-reorder="reorder($event)">
+  <li ng-repeat="item in items" ng-item="{{ item.item }}">
+    <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
+    {{ item.item }}
+    <input type="number" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+  </li>
+</ul>

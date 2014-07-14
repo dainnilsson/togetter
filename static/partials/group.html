@@ -1,0 +1,7 @@
+<h1>{{ group.label }}</h1>
+
+<ul>
+  <li ng-repeat="list in group.lists">
+  <a href="/{{ groupId }}/{{ list.id }}">{{ list.label }}</a>
+  </li>
+</ul>
