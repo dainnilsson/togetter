@@ -30,9 +30,9 @@ class EntityNotFoundError(Exception):
 
 class BaseController(object):
 
-    def __init__(self, key):
+    def __init__(self, key, entity=None):
         self.key = key
-        self._entity = None
+        self._entity = entity
 
     @property
     def entity(self):
@@ -55,11 +55,18 @@ class BaseController(object):
         self.entity.label = value
         self.entity.put()
 
+    @property
+    def data(self):
+        return {
+            'id': self.id,
+            'label': self.label
+        }
+
 
 class GroupController(BaseController):
 
-    def __init__(self, key):
-        super(GroupController, self).__init__(key)
+    def __init__(self, *args):
+        super(GroupController, self).__init__(*args)
         self._lists = {}
         self._stores = {}
 
@@ -86,13 +93,14 @@ class GroupController(BaseController):
 
     @property
     def data(self):
-        return {
-            'label': self.label,
+        data = super(GroupController, self).data
+        data.update({
             'lists': map(lambda (k, v): {'id': k, 'label': v},
                          self.lists.items()),
             'stores': map(lambda (k, v): {'id': k, 'label': v},
                           self.stores.items())
-        }
+        })
+        return data
 
     def list(self, list_id):
         if list_id not in self._lists:
@@ -131,14 +139,44 @@ class GroupController(BaseController):
 
 class ListController(BaseController):
 
-    def __init__(self, group, key):
-        super(ListController, self).__init__(key)
+    def __init__(self, group, *args):
+        super(ListController, self).__init__(*args)
         self.group = group
         self._items = {}
 
     @property
     def items(self):
-        return Item.query(ancestor=self.key).order(Item.position).fetch()
+        entities = Item.query(ancestor=self.key).order(Item.position).fetch()
+        return [ItemController(self, entity.key, entity) for entity in entities]
+
+    @property
+    def store(self):
+        return self.entity.store
+
+    @store.setter
+    def store(self, store_key):
+        self.entity.store = store_key
+        items = Item.query(ancestor=self.key).fetch()
+        order_keys = [
+            ndb.Key(
+                Ordering,
+                x.id(),
+                parent=store_key) for x in items]
+        order = ndb.get_multi(order_keys)
+        for item, ordering in zip(items, order):
+            item.position = ordering.position
+        ndb.put_all(items)
+        self.entity.put()
+
+    @property
+    def data(self):
+        data = super(ListController, self).data
+        store = StoreController(self.group, self.store)
+        data.update({
+            'store': {'label': store.label, 'id': store.id},
+            'items': [item.data for item in self.items]
+        })
+        return data
 
     def add_item(self, item_id, amount):
         item_key = ndb.Key(Item, item_id, parent=self.key)
@@ -188,20 +226,6 @@ class ListController(BaseController):
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()
 
-    def set_store(self, store_key):
-        self.entity.store = store_key
-        items = Item.query(ancestor=self.key).fetch()
-        order_keys = [
-            ndb.Key(
-                Ordering,
-                x.id(),
-                parent=store_key) for x in items]
-        order = ndb.get_multi(order_keys)
-        for item, ordering in zip(items, order):
-            item.position = ordering.position
-        ndb.put_all(items)
-        self.entity.put()
-
     def reorder(self, item_id, prev=None, next=None):
         prev_pos = Item.get_by_id(prev, parent=self.key).position \
             if prev else MIN_POS
@@ -223,9 +247,13 @@ class ListController(BaseController):
 
 class ItemController(BaseController):
 
-    def __init__(self, _list, key):
-        super(ItemController, self).__init__(key)
+    def __init__(self, _list, *args):
+        super(ItemController, self).__init__(*args)
         self.list = _list
+
+    @property
+    def id(self):
+        return self.key.id()
 
     @property
     def collected(self):
@@ -245,18 +273,20 @@ class ItemController(BaseController):
         self.entity.amount = amount
         self.entity.put()
 
-
-class StoreController(BaseController):
-
-    def __init__(self, group, key):
-        super(StoreController, self).__init__(key)
-        self.group = group
-
     @property
     def data(self):
         return {
-            'label': self.label
+            'item': self.id,
+            'amount': self.amount,
+            'collected': self.collected
         }
+
+
+class StoreController(BaseController):
+
+    def __init__(self, group, *args):
+        super(StoreController, self).__init__(*args)
+        self.group = group
 
     def fix_spacing(self):
         order = Ordering.query(ancestor=self.key) \

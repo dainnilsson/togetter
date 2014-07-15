@@ -17,29 +17,22 @@ class GroupIndexHandler(BaseHandler):
 
 class GroupHandler(BaseHandler):
     def get(self, group_id):
-        group = get_group(group_id)
-        self.return_json(group.data)
+        self.return_json(get_group(group_id).data)
 
 
 class StoreHandler(BaseHandler):
     def get(self, group_id, store_id):
-        store = get_group(group_id).store(store_id)
-        self.return_json(store.data)
+        self.return_json(get_group(group_id).store(store_id).data)
 
 
 class ListIndexHandler(BaseHandler):
     def get(self, group_id):
-        lists = get_group(group_id).lists
-        result = map(lambda k, v: {'id': k, 'label': v}, lists.items())
-        self.return_json(result)
+        self.return_json(get_group(group_id).data)
 
 
 class ListHandler(BaseHandler):
     def get(self, group_id, list_id):
-        items = get_group(group_id).list(list_id).items
-        self.return_json(map(lambda x: {
-            'item': x.key.id(), 'amount': x.amount, 'collected': x.collected
-        }, items))
+        self.return_json(get_group(group_id).list(list_id).data)
 
     def post(self, group_id, list_id):
         _list = get_group(group_id).list(list_id)

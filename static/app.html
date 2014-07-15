@@ -11,41 +11,24 @@
 
     <script src="/static/js/app.js"></script>
     <style>
-.slip-reordering {
-    box-shadow: 0 2px 10px rgba(0,0,0,0.45);
-}
+    .slip-reordering {
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+    }
 
-.slip-swiping-container {
-    overflow-x: hidden;
-}
+    .slip-swiping-container {
+      overflow-x: hidden;
+    }
 
-li {
-   user-select: none;
-   -moz-user-select: none;
-   -webkit-user-select: none;
-   cursor: default;
-}
-
-ul {
-    clear:left;
-    margin: 1em;
-    padding: 0 0 1px;
-}
-
-li {
-    display:block;
-    border: 1px solid black;
-    background: white;
-    margin: 0; padding: 0 1em;
-    border-radius: 3px;
-    margin-bottom: -1px;
-    max-width: 100%;
-    line-height: 3;
-    vertical-align: middle;
-}
+    li.list-group-item {
+      user-select: none;
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      cursor: default;
+      padding: 0 15px;
+    }
     </style>
   </head>
   <body>
-    <div ng-view></div>
+    <div class="container" ng-view></div>
   </body>
 </html>

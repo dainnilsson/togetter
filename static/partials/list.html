@@ -1,9 +1,17 @@
-<input type="text" ng-model="select" typeahead="item for item in filter_ingredients($viewValue)" typeahead-wait-ms="500" ng-enter="on_select()" class="form-control">
-    
-<ul ng-reorderable on-reorder="reorder($event)">
-  <li ng-repeat="item in items" ng-item="{{ item.item }}">
-    <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
+<h1>{{ list.label }}</h1>
+<h2>Store: {{ list.store.label }}</h2>
+
+<form class="form-inline" ng-submit="add_item()">
+  <label for="add_item" class="control-label">Add item:</label>
+  <input id="add_item" type="text" ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
+</form>
+
+<form class="form-inline panel panel-default">
+<ul class="list-group" ng-reorderable on-reorder="move_item($event)">
+  <li class="list-group-item" ng-repeat="item in list.items" ng-item="{{ item.item }}">
+    <input type="checkbox" class="form-control" ng-model="item.collected" ng-change="update_item(item)" />
     {{ item.item }}
-    <input type="number" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+    <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" />
   </li>
 </ul>
+</form>
