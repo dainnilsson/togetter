@@ -3,25 +3,29 @@
 
 <form class="form-inline" ng-submit="add_item()">
   <label for="add_item" class="control-label">Add item:</label>
-  <input id="add_item" type="text" ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
+  <div class="input-group">
+    <input id="add_item" type="text" ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
+    <span class="input-group-btn">
+      <input class="btn btn-default" type="submit" value="Add" />
+    </span>
+  </div>
+
+
 </form>
 
 <br />
-
+<div class="row"><div class="col-xs-12 col-md-6">
 <form class="form panel panel-default">
 <ul class="list-group" ng-reorderable on-reorder="move_item($event)">
   <li class="list-group-item" ng-repeat="item in list.items" ng-hide="item.collected">
     <div class="row slip-instant">
-      <div class="col-xs-2">
-	<span class="slip-instant badge">
-        <span class="glyphicon glyphicon-sort"></span>
-        </span>
+      <div class="col-xs-8">
         <label class="">
           <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
           {{ item.item }}
         </label>
       </div>
-      <div class="col-sm-1">
+      <div class="col-xs-4">
         <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" />
       </div>
     </div>
@@ -33,19 +37,20 @@
 <form class="form panel panel-default">
 <ul class="list-group">
   <li class="list-group-item" ng-repeat="item in list.items" ng-show="item.collected">
-    <div class="row slip-instant">
-      <div class="col-xs-2">
+    <div class="row">
+      <div class="col-xs-8">
         <label class="">
           <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
           {{ item.item }}
         </label>
       </div>
-      <div class="col-sm-1">
+      <div class="col-xs-4" style="text-align: right;">
         <span class="badge">{{ item.amount }}</span>
       </div>
     </div>
   </li>
 </ul>
 </form>
+</div></div>
 
 <button class="btn btn-danger" ng-click="clear_collected()">Clear collected items</button>

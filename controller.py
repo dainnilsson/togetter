@@ -179,6 +179,13 @@ class ListController(BaseController):
         return data
 
     def add_item(self, item_id, amount):
+        ingredient = Ingredient.query(ancestor=self.group.key) \
+            .filter(Ingredient.normalized == normalize(item_id)).get()
+        if not ingredient:
+            Ingredient(parent=self.group.key, id=item_id).put()
+        else:
+            item_id = ingredient.key.id()
+
         item_key = ndb.Key(Item, item_id, parent=self.key)
         existing = item_key.get()
         if existing:
@@ -210,9 +217,6 @@ class ListController(BaseController):
                 id=item_id,
                 amount=amount,
                 position=pos).put()
-        if not Ingredient.query(ancestor=self.group.key) \
-                .filter(Ingredient.normalized == normalize(item_id)).get():
-            Ingredient(parent=self.group.key, id=item_id).put()
         return self.item(item_id)
 
     def item(self, item_id):

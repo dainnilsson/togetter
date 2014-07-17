@@ -185,7 +185,7 @@ app.directive('ngReorderable', ['$parse', function($parse) {
     });
     element.bind("slip:beforewait", function(event) {
       if(event.target.className.indexOf('slip-instant') > -1) {
-        event.preventDefault();
+        //event.preventDefault();
       }
     });
   };
