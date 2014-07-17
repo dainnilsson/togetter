@@ -1,0 +1,13 @@
+<h1>Shopping</h1>
+
+<form ng-submit="set_group(groupId)">
+  <label for="group_id">Enter group ID:</label>
+  <input id="group_id" type="text" class="form-control" ng-model="groupId" />
+  <input type="submit" class="btn btn-default" value="Select" />
+</form>
+
+<form ng-submit="create_group(group_name)">
+  <label for="group_name">New Group:</label>
+  <input id="group_name" type="text" class="form-control" ng-model="group_name" />
+  <input type="submit" class="btn btn-default" value="Create" />
+</form>

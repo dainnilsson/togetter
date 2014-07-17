@@ -6,12 +6,46 @@
   <input id="add_item" type="text" ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
 </form>
 
-<form class="form-inline panel panel-default">
+<br />
+
+<form class="form panel panel-default">
 <ul class="list-group" ng-reorderable on-reorder="move_item($event)">
-  <li class="list-group-item" ng-repeat="item in list.items" ng-item="{{ item.item }}">
-    <input type="checkbox" class="form-control" ng-model="item.collected" ng-change="update_item(item)" />
-    {{ item.item }}
-    <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+  <li class="list-group-item" ng-repeat="item in list.items" ng-hide="item.collected">
+    <div class="row slip-instant">
+      <div class="col-xs-2">
+	<span class="slip-instant badge">
+        <span class="glyphicon glyphicon-sort"></span>
+        </span>
+        <label class="">
+          <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
+          {{ item.item }}
+        </label>
+      </div>
+      <div class="col-sm-1">
+        <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+      </div>
+    </div>
   </li>
 </ul>
 </form>
+
+<h2>Collected items</h2>
+<form class="form panel panel-default">
+<ul class="list-group">
+  <li class="list-group-item" ng-repeat="item in list.items" ng-show="item.collected">
+    <div class="row slip-instant">
+      <div class="col-xs-2">
+        <label class="">
+          <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
+          {{ item.item }}
+        </label>
+      </div>
+      <div class="col-sm-1">
+        <span class="badge">{{ item.amount }}</span>
+      </div>
+    </div>
+  </li>
+</ul>
+</form>
+
+<button class="btn btn-danger" ng-click="clear_collected()">Clear collected items</button>

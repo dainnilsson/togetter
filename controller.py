@@ -210,9 +210,9 @@ class ListController(BaseController):
                 id=item_id,
                 amount=amount,
                 position=pos).put()
-            if not Ingredient.query(ancestor=self.group.key) \
-                    .filter(Ingredient.normalized == normalize(item_id)).get():
-                Ingredient(parent=self.group.key, id=item_id).put()
+        if not Ingredient.query(ancestor=self.group.key) \
+                .filter(Ingredient.normalized == normalize(item_id)).get():
+            Ingredient(parent=self.group.key, id=item_id).put()
         return self.item(item_id)
 
     def item(self, item_id):
@@ -241,7 +241,9 @@ class ListController(BaseController):
             ordering.put()
 
     def clear(self):
-        keys = Item.query(ancestor=self.key).fetch(keys_only=True)
+        keys = Item.query(ancestor=self.key) \
+            .filter(Item.collected == True) \
+            .fetch(keys_only=True)
         ndb.delete_multi(keys)
 
 

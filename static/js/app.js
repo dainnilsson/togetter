@@ -1,6 +1,6 @@
 'use strict';
 
-var app = angular.module('shopping', ['ngRoute', 'ui.bootstrap']);
+var app = angular.module('shopping', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
 
 /*
  * Configuration
@@ -10,8 +10,10 @@ app.config(['$routeProvider', '$locationProvider', function($routeProvider, $loc
   $locationProvider.html5Mode(true);
 
   $routeProvider.when('/', {
-    templateUrl: '/static/partials/index.html',
-    controller: 'IndexController'
+    resolve: { redirect: 'IndexRedirector' }
+  }).when('/welcome', {
+    templateUrl: '/static/partials/welcome.html',
+    controller: 'WelcomeController'
   }).when('/:groupId', {
     templateUrl: '/static/partials/group.html',
     controller: 'GroupController'
@@ -22,33 +24,67 @@ app.config(['$routeProvider', '$locationProvider', function($routeProvider, $loc
 }]);
 
 /*
+ * Services
+ */
+
+app.factory('IndexRedirector',
+		['$location', '$localStorage',
+		function($location, $localStorage) {
+  $location.path($localStorage.$default({last: '/welcome'}).last);
+}]);
+
+/*
  * Controllers
  */
 
-app.controller('IndexController', ['$scope', '$location', function($scope, $location) {
+app.controller('IndexController',
+		['$location', '$localStorage',
+		function($location, $localStorage) {
+  console.log("hello");
+  $location.path($localStorage.$default({last: '/welcome'}).last);
+}]);
+
+app.controller('WelcomeController',
+		['$scope', '$location', '$http', '$localStorage',
+		function($scope, $location, $http, $localStorage) {
   $scope.set_group = function(groupId) {
     $location.path('/'+groupId);
+  }
+
+  $scope.create_group = function(group_name) {
+    $http.post('/api/create', null, {
+      params: {'label': group_name}
+    }).success(function(data) {
+      $location.path('/'+data.id);
+    });
+  };
+
+  if($localStorage.last) {
+    $location.path($localStorage.last);
   }
 }]);
 
 app.controller('GroupController',
-		['$scope', '$routeParams', '$http',
-		function($scope, $routeParams, $http) {
+		['$scope', '$routeParams', '$http', '$localStorage', '$location',
+		function($scope, $routeParams, $http, $localStorage, $location) {
   $scope.groupId = $routeParams.groupId;
   $http.get('/api/'+$scope.groupId+'/').success(function(res) {
+    $localStorage.last = $location.path();
     $scope.group = res
   });
 }]);
 
 app.controller('ListController',
-		['$scope', '$routeParams', '$http',
-		function($scope, $routeParams, $http) {
+		['$scope', '$routeParams', '$http','$localStorage', '$location',
+		function($scope, $routeParams, $http, $localStorage, $location) {
+  $localStorage.last = $location.path();
+
   $scope.groupId = $routeParams.groupId;
   $scope.listId = $routeParams.listId;
 
   $scope.list = [];
 
-  $scope.refresh_items = function() {
+  $scope.refresh_list = function() {
     $http.get('/api/'+$scope.groupId+'/lists/'+$scope.listId+'/').success(function(res) {
       $scope.list = res;
       console.log("List refreshed!");
@@ -74,7 +110,7 @@ app.controller('ListController',
       }
     }).success(function(res) {
       $scope.new_item = undefined;
-      $scope.refresh_items();
+      $scope.refresh_list();
     });
   }
 
@@ -87,7 +123,7 @@ app.controller('ListController',
 	'collected': item.collected
       }
     }).error(function(res) {
-      $scope.refresh_items();
+      $scope.refresh_list();
     });
   }
 
@@ -107,11 +143,28 @@ app.controller('ListController',
         'next': next ? next.item : undefined
       }
     }).error(function(data, status, headers, config) {
-      $scope.refresh_items();
+      $scope.refresh_list();
     });
   };
 
-  $scope.refresh_items();
+  $scope.clear_collected = function() {
+    var remaining = [];
+    angular.forEach($scope.list.items, function(item) {
+      if(!item.collected) {
+        remaining.push(item);
+      }
+    });
+    $scope.list.items = remaining;
+    $http.post('/api/'+$scope.groupId+'/lists/'+$scope.listId+'/', null, {
+      params: {
+        'action': 'clear'
+      }
+    }).error(function(data, status, headers, config) {
+      $scope.refresh_list();
+    });
+  }
+
+  $scope.refresh_list();
 }]);
 
 /*
@@ -129,6 +182,11 @@ app.directive('ngReorderable', ['$parse', function($parse) {
       });
 
       return false;
+    });
+    element.bind("slip:beforewait", function(event) {
+      if(event.target.className.indexOf('slip-instant') > -1) {
+        event.preventDefault();
+      }
     });
   };
 }]);
