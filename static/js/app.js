@@ -1,6 +1,6 @@
 'use strict';
 
-var app = angular.module('shopping', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
+var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
 
 /*
  * Configuration
