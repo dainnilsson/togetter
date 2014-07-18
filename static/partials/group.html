@@ -4,6 +4,16 @@
 
 <ul>
   <li ng-repeat="list in group.lists">
-  <a href="/{{ groupId }}/{{ list.id }}">{{ list.label }}</a>
+    <a href="/{{ groupId }}/{{ list.id }}">{{ list.label }}</a>
+  </li>
+  <li>
+    <form class="form-inline" ng-submit="create_list(new_list)">
+      <div class="input-group">
+        <input id="add_list" type="text" placeholder="New list" ng-model="new_list" class="form-control">
+        <span class="input-group-btn">
+          <input class="btn btn-default" type="submit" value="Create" />
+        </span>
+      </div>
+    </form>
   </li>
 </ul>

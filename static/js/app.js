@@ -58,16 +58,24 @@ app.controller('WelcomeController',
       $location.path('/'+data.id);
     });
   };
-
-  if($localStorage.last) {
-    $location.path($localStorage.last);
-  }
 }]);
 
 app.controller('GroupController',
 		['$scope', '$routeParams', '$http', '$localStorage', '$location',
 		function($scope, $routeParams, $http, $localStorage, $location) {
   $scope.groupId = $routeParams.groupId;
+
+  $scope.create_list = function(list_name) {
+    $http.post('/api/'+$scope.groupId+'/', null, {
+      params: {
+        'action': 'create_list',
+        'label': list_name
+      }
+    }).success(function(data) {
+      $location.path('/'+$scope.groupId+'/'+data.id)
+    });
+  }
+
   $http.get('/api/'+$scope.groupId+'/').success(function(res) {
     $localStorage.last = $location.path();
     $scope.group = res

@@ -19,6 +19,16 @@ class GroupHandler(BaseHandler):
     def get(self, group_id):
         self.return_json(get_group(group_id).data)
 
+    def post(self, group_id):
+        group = get_group(group_id)
+        action = self.request.get('action')
+        try:
+            if action == 'create_list':
+                _list = group.create_list(self.request.get('label'))
+                return webapp2.redirect('lists/' + _list.id + '/')
+        except EntityNotFoundError:
+            self.abort(404)
+
 
 class StoreHandler(BaseHandler):
     def get(self, group_id, store_id):
