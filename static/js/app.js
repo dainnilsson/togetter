@@ -82,6 +82,10 @@ app.controller('ListController',
   $scope.groupId = $routeParams.groupId;
   $scope.listId = $routeParams.listId;
 
+  $http.get('/api/'+$scope.groupId+'/').success(function(res) {
+    $scope.group = res;
+  });
+
   $scope.list = [];
 
   $scope.refresh_list = function() {

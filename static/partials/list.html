@@ -1,6 +1,16 @@
-<h1>{{ list.label }}</h1>
-<h2>Store: {{ list.store.label }}</h2>
+<div class="row"><div class="col-xs-12">
 
+<ol class="breadcrumb well well-sm">
+  <li><a href="/{{ group.id }}">{{ group.label }}</a></li>
+  <li class="active">{{ list.label }}</li>
+</ol>
+
+</div></div>
+
+<!--<span>Store: {{ list.store.label }}</span>-->
+
+<div class="row"><div class="col-xs-12 col-md-6">
+<div class="well well-sm">
 <form class="form-inline" ng-submit="add_item()">
   <label for="add_item" class="control-label">Add item:</label>
   <div class="input-group">
@@ -9,18 +19,15 @@
       <input class="btn btn-default" type="submit" value="Add" />
     </span>
   </div>
-
-
 </form>
 
-<br />
-<div class="row"><div class="col-xs-12 col-md-6">
+<h2>Items</h2>
 <form class="form panel panel-default">
 <ul class="list-group" ng-reorderable on-reorder="move_item($event)">
   <li class="list-group-item" ng-repeat="item in list.items" ng-hide="item.collected">
     <div class="row slip-instant">
-      <div class="col-xs-8">
-        <label class="">
+      <div class="col-xs-8 checkbox">
+        <label>
           <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
           {{ item.item }}
         </label>
@@ -33,13 +40,18 @@
 </ul>
 </form>
 
+</div>
+</div><div class="col-xs-12 col-md-6">
+
+<div class="well well-sm">
+
 <h2>Collected items</h2>
 <form class="form panel panel-default">
 <ul class="list-group">
   <li class="list-group-item" ng-repeat="item in list.items" ng-show="item.collected">
     <div class="row">
-      <div class="col-xs-8">
-        <label class="">
+      <div class="col-xs-8 checkbox">
+        <label>
           <input type="checkbox" ng-model="item.collected" ng-change="update_item(item)" />
           {{ item.item }}
         </label>
@@ -51,6 +63,10 @@
   </li>
 </ul>
 </form>
-</div></div>
 
 <button class="btn btn-danger" ng-click="clear_collected()">Clear collected items</button>
+
+</div>
+
+</div>
+</div>
