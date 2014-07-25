@@ -30,8 +30,11 @@ app.config(['$routeProvider', '$locationProvider', function($routeProvider, $loc
 app.factory('IndexRedirector',
 		['$location', '$localStorage',
 		function($location, $localStorage) {
-  $location.path($localStorage.$default({last: '/welcome'}).last);
+  $location.path($localStorage.last || '/welcome');
 }]);
+
+//app.factory('ItemCompleter',
+//		['$cacheProvider']);
 
 /*
  * Controllers
@@ -40,8 +43,7 @@ app.factory('IndexRedirector',
 app.controller('IndexController',
 		['$location', '$localStorage',
 		function($location, $localStorage) {
-  console.log("hello");
-  $location.path($localStorage.$default({last: '/welcome'}).last);
+  $location.path($localStorage.last || '/welcome');
 }]);
 
 app.controller('WelcomeController',
@@ -94,10 +96,11 @@ app.controller('ListController',
     $scope.group = res;
   });
 
-  $scope.list = [];
+  $scope.list = $localStorage[$scope.listId];
 
   $scope.refresh_list = function() {
     $http.get('/api/'+$scope.groupId+'/lists/'+$scope.listId+'/').success(function(res) {
+      $localStorage[$scope.listId] = res;
       $scope.list = res;
       console.log("List refreshed!");
     });
