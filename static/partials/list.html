@@ -11,15 +11,6 @@
 
 <div class="row"><div class="col-xs-12 col-md-6">
 <div class="well well-sm">
-<form class="form-inline" ng-submit="add_item()">
-  <label for="add_item" class="control-label">Add item:</label>
-  <div class="input-group">
-    <input id="add_item" type="text" ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
-    <span class="input-group-btn">
-      <input class="btn btn-default" type="submit" value="Add" />
-    </span>
-  </div>
-</form>
 
 <h2>Items</h2>
 <form class="form panel panel-default">
@@ -40,6 +31,15 @@
 </ul>
 </form>
 
+<form class="form" ng-submit="add_item()">
+  <!--<label for="add_item" class="control-label">Add item</label>-->
+  <div class="input-group">
+    <input id="add_item" type="text" placeholder="Add item..." ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
+    <span class="input-group-btn">
+      <input class="btn btn-default" type="submit" value="Add" />
+    </span>
+  </div>
+</form>
 </div>
 </div><div class="col-xs-12 col-md-6">
 
@@ -64,7 +64,7 @@
 </ul>
 </form>
 
-<button class="btn btn-danger" ng-click="clear_collected()">Clear collected items</button>
+<button class="form-control btn btn-danger" ng-click="clear_collected()">Clear collected items</button>
 
 </div>
 
