@@ -1,0 +1,4 @@
+cron:
+- description: clear stale listeners
+  url: /cron/clear_listeners/
+  schedule: every 24 hours

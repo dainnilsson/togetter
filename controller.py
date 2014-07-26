@@ -3,7 +3,7 @@ from google.appengine.api import channel
 from model import Group, List, Item, Store, Ordering, Ingredient, Listener
 from util import encode_id, decode_id, normalize
 import json
-import time
+import datetime
 
 
 # Signed 64-bit integer
@@ -23,6 +23,12 @@ def create_group(name):
 
 def get_group(group_id):
     return GroupController(ndb.Key(Group, decode_id(group_id)))
+
+
+def clear_stale_listeners():
+    earliest = datetime.datetime.now() - datetime.timedelta(hours=3)
+    keys = Listener.query(Listener.created < earliest).fetch(keys_only=True)
+    ndb.delete_multi(keys)
 
 
 class EntityNotFoundError(Exception):

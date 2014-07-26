@@ -85,18 +85,11 @@ class IngredientHandler(BaseHandler):
         self.return_json(result)
 
 
-class ChannelHandler(BaseHandler):
-    def post(self, action):
-        client_id = self.request.get('from')
-        print "%s: %s" % (action, client_id)
-
-
 application = webapp2.WSGIApplication([
     webapp2.Route('/api/create', GroupIndexHandler),
     webapp2.Route('/api/<group_id>/', handler=GroupHandler),
     webapp2.Route('/api/<group_id>/stores/<store_id>/', handler=StoreHandler),
     webapp2.Route('/api/<group_id>/lists/', handler=ListIndexHandler),
     webapp2.Route('/api/<group_id>/lists/<list_id>/', handler=ListHandler),
-    webapp2.Route('/api/<group_id>/ingredients/', handler=IngredientHandler),
-    webapp2.Route('/_ah/channel/<action>/', handler=ChannelHandler)
+    webapp2.Route('/api/<group_id>/ingredients/', handler=IngredientHandler)
 ], debug=True)
