@@ -6,7 +6,8 @@ var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
  * Configuration
  */
 
-app.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
+app.config(['$routeProvider', '$locationProvider',
+		function($routeProvider, $locationProvider) {
   $locationProvider.html5Mode(true);
 
   $routeProvider.when('/', {
@@ -31,6 +32,117 @@ app.factory('IndexRedirector',
 		['$location', '$localStorage',
 		function($location, $localStorage) {
   $location.path($localStorage.last || '/welcome');
+}]);
+
+app.factory('activityMonitor', ['$window', '$rootScope', function($window, $rootScope) {
+  var mon = {
+    latest: Date.now(),
+    threshold: 10000
+  };
+
+  mon.touch = function() {
+    var now = Date.now();
+    if(now - mon.latest > mon.threshold) {
+      console.log("Return from idle!");
+      $rootScope.$broadcast('awake');
+    }
+    mon.latest = now;
+  }
+
+  var w = angular.element($window);
+  w.on('online focus touchmove mousemove mousedown mousewheel keydown DOMMouseScroll', mon.touch);
+
+  //Stutter detection (indicates screen may have been off)
+  var tick = Date.now();
+  setInterval(function() {
+    $rootScope.$apply(function() {
+      var now = Date.now();
+      if(now - tick > 1100) {
+        mon.touch();
+      }
+      tick = now;
+    });
+  }, 1000);
+
+  return mon;
+}]);
+
+app.factory('listener',
+		['$http', '$rootScope', 'activityMonitor',
+		function($http, $rootScope, activityMonitor) {
+  var listener = {
+    handlers: {},
+    channel: undefined,
+    groupId: undefined
+  };
+
+  $rootScope.$on('awake', function() {
+    if(!listener.channel) {
+      listener.connect();
+    } else {
+      listener.notify();
+    }
+  });
+
+  listener.subscribe = function(groupId) {
+    if(listener.groupId != groupId) {
+      listener.groupId = groupId;
+      if(listener.socket) {
+        listener.socket.close();
+      } else {
+        listener.connect();
+      }
+    }
+  };
+
+  listener.connect = function() {
+    if(!listener.groupId) return;
+
+    $http.post('/api/'+listener.groupId+'/', null, {
+      params: {'action': 'create_channel'}
+    }).success(function(res) {
+      listener.token = res.token;
+      listener.channel = new goog.appengine.Channel(listener.token);
+      listener.socket = listener.channel.open();
+      listener.socket.onmessage = function(message) {
+        var data = angular.fromJson(message.data);
+        console.log("Got message", data, res.token);
+        var handler = listener.handlers[data.id];
+        handler && handler(data);
+	activityMonitor.touch();
+      };
+      listener.socket.onerror = function() {
+        console.log("onerror");
+      };
+      listener.socket.onclose = function() {
+        listener.channel = undefined;
+	listener.socket = undefined;
+        listener.connect();
+        console.log("onclose");
+      };
+    }).error(function(data, status, headers, config) {
+      console.log("Error subscribing");
+    });
+  };
+
+  listener.notify = function() {
+    $http.post('/api/'+listener.groupId+'/', null, {
+      params: {'action': 'notify', 'token': listener.token}
+    }).success(function() {
+      activityMonitor.touch();
+    });
+  };
+
+  listener.keepAlive = setInterval(function() {
+    if($rootScope.window_focus) {
+      if(!listener.channel) {
+        listener.connect();
+      }
+      listener.notify();
+    }
+  }, 10000);
+  
+  return listener;
 }]);
 
 //app.factory('ItemCompleter',
@@ -85,12 +197,20 @@ app.controller('GroupController',
 }]);
 
 app.controller('ListController',
-		['$scope', '$routeParams', '$http','$localStorage', '$location',
-		function($scope, $routeParams, $http, $localStorage, $location) {
+		['$scope', '$routeParams', '$http','$localStorage', '$location', 'listener', 'activityMonitor',
+		function($scope, $routeParams, $http, $localStorage, $location, listener, am) {
   $localStorage.last = $location.path();
 
   $scope.groupId = $routeParams.groupId;
   $scope.listId = $routeParams.listId;
+
+  listener.subscribe($scope.groupId);
+  listener.handlers[$scope.listId] = function(list) {
+    $localStorage[$scope.listId] = list;
+    $scope.$apply(function() {
+      $scope.list = list;
+    });
+  }
 
   $http.get('/api/'+$scope.groupId+'/').success(function(res) {
     $scope.group = res;
@@ -125,7 +245,6 @@ app.controller('ListController',
       }
     }).success(function(res) {
       $scope.new_item = undefined;
-      $scope.refresh_list();
     });
   }
 
@@ -180,6 +299,7 @@ app.controller('ListController',
   }
 
   $scope.refresh_list();
+  $scope.$on('awake', $scope.refresh_list);
 }]);
 
 /*

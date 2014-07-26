@@ -31,3 +31,8 @@ class Item(ndb.Model):  # List as parent
     amount = ndb.IntegerProperty(default=1)
     position = ndb.IntegerProperty(default=0)
     collected = ndb.BooleanProperty(default=False)
+
+
+class Listener(ndb.Model):  # Group as parent
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    lists = ndb.KeyProperty(kind=List, repeated=True)

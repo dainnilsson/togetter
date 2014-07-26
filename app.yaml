@@ -4,6 +4,9 @@ runtime: python27
 api_version: 1
 threadsafe: true
 
+inbound_services:
+- channel_presence
+
 handlers:
 - url: /vendor
   static_dir: bower_components
@@ -12,6 +15,9 @@ handlers:
   static_dir: static
 
 - url: /api/.*
+  script: api.application
+
+- url: /_ah/channel/.*
   script: api.application
 
 - url: /.*

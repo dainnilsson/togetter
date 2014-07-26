@@ -26,6 +26,10 @@ class GroupHandler(BaseHandler):
             if action == 'create_list':
                 _list = group.create_list(self.request.get('label'))
                 return webapp2.redirect('lists/' + _list.id + '/')
+            elif action == 'create_channel':
+                self.return_json({'token': group.create_listener()})
+            elif action == 'notify':
+                group.notify(self.request.get('token'))
         except EntityNotFoundError:
             self.abort(404)
 
@@ -61,6 +65,7 @@ class ListHandler(BaseHandler):
                     item.collected = json.loads(self.request.get('collected'))
                 if 'amount' in self.request.arguments():
                     item.amount = int(self.request.get('amount'))
+                # TODO: Only notify once!
             elif action == 'clear':
                 _list.clear()
             elif action == 'reorder':
@@ -80,11 +85,18 @@ class IngredientHandler(BaseHandler):
         self.return_json(result)
 
 
+class ChannelHandler(BaseHandler):
+    def post(self, action):
+        client_id = self.request.get('from')
+        print "%s: %s" % (action, client_id)
+
+
 application = webapp2.WSGIApplication([
     webapp2.Route('/api/create', GroupIndexHandler),
     webapp2.Route('/api/<group_id>/', handler=GroupHandler),
     webapp2.Route('/api/<group_id>/stores/<store_id>/', handler=StoreHandler),
     webapp2.Route('/api/<group_id>/lists/', handler=ListIndexHandler),
     webapp2.Route('/api/<group_id>/lists/<list_id>/', handler=ListHandler),
-    webapp2.Route('/api/<group_id>/ingredients/', handler=IngredientHandler)
+    webapp2.Route('/api/<group_id>/ingredients/', handler=IngredientHandler),
+    webapp2.Route('/_ah/channel/<action>/', handler=ChannelHandler)
 ], debug=True)

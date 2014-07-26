@@ -1,6 +1,9 @@
 from google.appengine.ext import ndb
-from model import Group, List, Item, Store, Ordering, Ingredient
+from google.appengine.api import channel
+from model import Group, List, Item, Store, Ordering, Ingredient, Listener
 from util import encode_id, decode_id, normalize
+import json
+import time
 
 
 # Signed 64-bit integer
@@ -136,6 +139,15 @@ class GroupController(BaseController):
                          Ingredient.words < end)
         return map(lambda x: x.id(), q.fetch(10, keys_only=True))
 
+    def create_listener(self):
+        listener = Listener(parent=self.key)
+        listener_key = listener.put()
+        return channel.create_channel(encode_id(listener_key.id()))
+
+    def notify(self, token):
+        for _list in [self.list(key) for key in self.lists]:
+            channel.send_message(token, json.dumps(_list.data))
+
 
 class ListController(BaseController):
 
@@ -167,6 +179,7 @@ class ListController(BaseController):
             item.position = ordering.position
         ndb.put_all(items)
         self.entity.put()
+        self._notify()
 
     @property
     def data(self):
@@ -217,6 +230,7 @@ class ListController(BaseController):
                 id=item_id,
                 amount=amount,
                 position=pos).put()
+        self._notify()
         return self.item(item_id)
 
     def item(self, item_id):
@@ -229,6 +243,7 @@ class ListController(BaseController):
 
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()
+        self._notify()
 
     def reorder(self, item_id, prev=None, next=None):
         prev_pos = Item.get_by_id(prev, parent=self.key).position \
@@ -243,12 +258,20 @@ class ListController(BaseController):
             ordering = Ordering.get_by_id(item_id, parent=store)
             ordering.position = item.position
             ordering.put()
+        self._notify()
 
     def clear(self):
         keys = Item.query(ancestor=self.key) \
             .filter(Item.collected == True) \
             .fetch(keys_only=True)
         ndb.delete_multi(keys)
+        self._notify()
+
+    def _notify(self):
+        # TODO: Cleanup expired listeners.
+        keys = Listener.query(ancestor=self.group.key).fetch(keys_only=True)
+        for key in keys:
+            channel.send_message(encode_id(key.id()), json.dumps(self.data))
 
 
 class ItemController(BaseController):
@@ -267,8 +290,10 @@ class ItemController(BaseController):
 
     @collected.setter
     def collected(self, collected):
-        self.entity.collected = collected
-        self.entity.put()
+        if self.entity.collected != collected:
+            self.entity.collected = collected
+            self.entity.put()
+            self.list._notify()
 
     @property
     def amount(self):
@@ -276,8 +301,10 @@ class ItemController(BaseController):
 
     @amount.setter
     def amount(self, amount):
-        self.entity.amount = amount
-        self.entity.put()
+        if self.entity.amount != amount:
+            self.entity.amount = amount
+            self.entity.put()
+            self.list._notify()
 
     @property
     def data(self):
