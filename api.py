@@ -1,4 +1,5 @@
 from controller import create_group, get_group, EntityNotFoundError
+from google.appengine.api import channel
 import webapp2
 import json
 
@@ -27,7 +28,10 @@ class GroupHandler(BaseHandler):
                 _list = group.create_list(self.request.get('label'))
                 return webapp2.redirect('lists/' + _list.id + '/')
             elif action == 'create_channel':
-                self.return_json({'token': group.create_listener()})
+                client_id, token = group.create_listener()
+                self.return_json({'token': token, 'client_id': client_id})
+            elif action == 'ping_channel':
+                channel.send_message(self.request.get('token'), 'pong')
             elif action == 'notify':
                 group.notify(self.request.get('token'))
         except EntityNotFoundError:
@@ -49,7 +53,8 @@ class ListHandler(BaseHandler):
         self.return_json(get_group(group_id).list(list_id).data)
 
     def post(self, group_id, list_id):
-        _list = get_group(group_id).list(list_id)
+        group = get_group(group_id)
+        _list = group.list(list_id)
         action = self.request.get('action')
         try:
             if action == 'add':
@@ -75,6 +80,13 @@ class ListHandler(BaseHandler):
                 _list.reorder(item_id, prev_item, next_item)
             else:
                 print "UNKNOWN ACTION: %r" % action
+                return
+            # Notify except token
+            token = self.request.get('token', None)
+            data = json.dumps(_list.data)
+            for listener in group.listeners:
+                if listener != token:
+                    channel.send_message(listener, data)
         except EntityNotFoundError:
             self.abort(404)
 

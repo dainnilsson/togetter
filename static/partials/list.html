@@ -2,12 +2,12 @@
 
 <ol class="breadcrumb well well-sm">
   <li><a href="/{{ group.id }}">{{ group.label }}</a></li>
-  <li class="active">{{ list.label }}</li>
+  <li class="active">{{ list.data.label }}</li>
 </ol>
 
 </div></div>
 
-<!--<span>Store: {{ list.store.label }}</span>-->
+<!--<span>Store: {{ list.data.store.label }}</span>-->
 
 <div class="row"><div class="col-xs-12 col-md-6">
 <div class="well well-sm">
@@ -15,7 +15,7 @@
 <h2>Items</h2>
 <form class="form panel panel-default">
 <ul class="list-group" ng-reorderable on-reorder="move_item($event)">
-  <li class="list-group-item" ng-repeat="item in list.items" ng-hide="item.collected">
+  <li class="list-group-item" ng-repeat="item in list.data.items" ng-hide="item.collected">
     <div class="row slip-instant">
       <div class="col-xs-8 checkbox">
         <label>
@@ -48,7 +48,7 @@
 <h2>Collected items</h2>
 <form class="form panel panel-default">
 <ul class="list-group">
-  <li class="list-group-item" ng-repeat="item in list.items" ng-show="item.collected">
+  <li class="list-group-item" ng-repeat="item in list.data.items" ng-show="item.collected">
     <div class="row">
       <div class="col-xs-8 checkbox">
         <label>
