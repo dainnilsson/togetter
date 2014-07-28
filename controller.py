@@ -149,6 +149,11 @@ class GroupController(BaseController):
         store = Store(parent=self.key, label=label)
         return self.store(encode_id(store.put().id()))
 
+    @property
+    def ingredients(self):
+        keys = Ingredient.query(ancestor=self.key).fetch(keys_only=True)
+        return [key.id() for key in keys]
+
     def autocomplete(self, partial):
         q = Ingredient.query(ancestor=self.key)
         if partial:
@@ -156,7 +161,7 @@ class GroupController(BaseController):
             end = start + u'\ufffd'
             q = q.filter(Ingredient.words >= start,
                          Ingredient.words < end)
-        return map(lambda x: x.id(), q.fetch(10, keys_only=True))
+        return [x.id() for x in q.fetch(10, keys_only=True)]
 
     def create_listener(self):
         listener = Listener(parent=self.key)

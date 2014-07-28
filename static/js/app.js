@@ -136,9 +136,56 @@ app.factory('Channel',
   };
 }]);
 
+app.factory('ItemCompleter', ['$http', function($http) {
+  return function(groupId) {
+    var that = this;
+    var ingredients = [];
+    
+    that.refresh = function() {
+      $http.get('/api/'+groupId+'/ingredients/').success(function(res) {
+        that.ingredients = res;
+      });
+    };
+  
+    that.add_ingredient = function(ingredient) {
+      this.ingredients.push(ingredient);
+      this.ingredients.sort();
+    };
+
+    that.filter = function(partial) {
+      partial = partial.trim();
+      var matches = [];
+      var exact = false;
+      var partial_lower = partial.toLowerCase();
+      for(var i=0; i<that.ingredients.length; i++) {
+        var ingredient = that.ingredients[i];
+        if(partial == ingredient) {
+          exact = true;
+	  matches.push(ingredient);
+          continue;
+        }
+        var words = ingredient.split(' ');
+        for(var j=0; j<words.length; j++) {
+          var word = words[j];
+          if(word.toLowerCase().substr(0, partial.length) == partial_lower) {
+            matches.push(ingredient);
+	    break;
+          }
+        }
+      }
+      if(!exact) {
+        matches.unshift(partial);
+      }
+      return matches;
+    };
+
+    that.refresh();
+  };
+}]);
+
 app.factory('GroupApi',
-                ['$localStorage', '$http', 'ListApi', 'Channel',
-                function($localStorage, $http, ListApi, Channel) {
+                ['$localStorage', '$http', 'ListApi', 'Channel', 'ItemCompleter',
+                function($localStorage, $http, ListApi, Channel, ItemCompleter) {
   return function(groupId) {
     var that = this;
     var groupUrl = '/api/'+groupId+'/';
@@ -192,6 +239,8 @@ app.factory('GroupApi',
       that.channel.close();
     };
 
+    that.item_completer = new ItemCompleter(groupId);
+
     that.channel = new Channel(groupId, function() {
       console.log('reconnect');
       for(var list_id in that._lists) {
@@ -200,6 +249,12 @@ app.factory('GroupApi',
     }, function(list_data) {
       console.log("Remote modification!", list_data);
       that.list(list_data.id).set_data(list_data);
+      for(var i=0; i<list_data.items.length; i++) {
+        var item = list_data.items[i];
+	if(that.item_completer.ingredients.indexOf(item.item) == -1) {
+          that.item_completer.add_ingredient(item.item);
+	}
+      }
     });
 
     that.revert_and_refresh();
@@ -259,7 +314,10 @@ app.factory('ListApi',
           'item': item,
           'token': group_api.channel.client_id
         }
-      }).success(that.refresh);
+      }).success(function() {
+        group_api.item_completer.add_ingredient(item);
+        that.refresh();
+      });
     };
 
     that.update_item = function(item) {
@@ -313,9 +371,6 @@ app.factory('ListApi',
   };
 }]);
 
-//app.factory('ItemCompleter',
-//                ['$cacheProvider']);
-
 /*
  * Controllers
  */
@@ -360,27 +415,18 @@ app.controller('GroupController',
 }]);
 
 app.controller('ListController',
-                ['$scope', '$routeParams', '$http', '$location', 'groupProvider', '$localStorage',
-                function($scope, $routeParams, $http, $location, groupProvider, $localStorage) {
+                ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider',
+                function($scope, $routeParams, $http, $location, $localStorage, groupProvider) {
   $localStorage.last = $location.path();
 
   $scope.groupId = $routeParams.groupId;
   $scope.listId = $routeParams.listId;
 
-  var list_api = groupProvider($scope.groupId).list($scope.listId);
+  var group_api = groupProvider($scope.groupId);
+  var list_api = group_api.list($scope.listId);
 
   $scope.list = list_api;
-
-  $scope.filter_items = function(viewValue) {
-    return $http.post('/api/'+$scope.groupId+'/ingredients/', null, {
-      params: { 'query': viewValue }
-    }).then(function(res) {
-      if(res.data.length > 0 && res.data.indexOf(viewValue) == -1) {
-        res.data.unshift(viewValue);
-      }
-      return res.data;
-    });
-  };
+  $scope.filter_items = group_api.item_completer.filter;
 
   $scope.add_item = function() {
     var item = $scope.new_item;

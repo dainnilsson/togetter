@@ -92,6 +92,10 @@ class ListHandler(BaseHandler):
 
 
 class IngredientHandler(BaseHandler):
+    def get(self, group_id):
+        result = get_group(group_id).ingredients
+        self.return_json(result)
+
     def post(self, group_id):
         result = get_group(group_id).autocomplete(self.request.get('query'))
         self.return_json(result)
