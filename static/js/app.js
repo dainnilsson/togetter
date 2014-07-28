@@ -144,17 +144,28 @@ app.factory('GroupApi',
     var groupUrl = '/api/'+groupId+'/';
     
     that.id = groupId;
-    that.data = $localStorage[groupId] || {};
 
     that.set_data = function(data) {
       that.data = data;
-      $localStorage[groupId] = that.data;
-      console.log("Group refreshed!", that.data);
+      that.commit();
+    };
+
+    that.commit = function() {
+      $localStorage[groupId] = angular.copy(that.data);
+    }
+
+    that.revert = function() {
+      that.data = angular.copy($localStorage[groupId]);
     };
 
     that.refresh = function() {
       $http.get(groupUrl).success(that.set_data);
     };
+
+    that.revert_and_refresh = function() {
+      that.revert();
+      that.refresh();
+    }
 
     that.create_list = function(list_name) {
       return $http.post(groupUrl, null, {
@@ -191,7 +202,7 @@ app.factory('GroupApi',
       that.list(list_data.id).set_data(list_data);
     });
 
-    that.refresh();
+    that.revert_and_refresh();
   };
 }]);
 
@@ -217,17 +228,29 @@ app.factory('ListApi',
     var storageKey = group_api.id+'/'+listId;
 
     that.id = listId;
-    that.data = $localStorage[storageKey] || {};
 
     that.set_data = function(data) {
       that.data = data;
-      $localStorage[storageKey] = that.data;
-      console.log("List refreshed!", that.data);
+      that.commit();
+    };
+
+    that.commit = function() {
+      $localStorage[storageKey] = angular.copy(that.data);
+    }
+
+    that.revert = function() {
+      that.data = angular.copy($localStorage[storageKey]);
     };
 
     that.refresh = function() {
+      console.log("Refresh list: "+that.id);
       $http.get(listUrl).success(that.set_data);
     };
+
+    that.revert_and_refresh = function() {
+      that.revert();
+      that.refresh();
+    }
 
     that.add_item = function(item) {
       return $http.post(listUrl, null, {
@@ -248,9 +271,7 @@ app.factory('ListApi',
           'collected': item.collected,
           'token': group_api.channel.client_id
         }
-      }).success(function() {
-        $localStorage[storageKey] = that.data;
-      }).error(that.refresh);
+      }).success(that.commit).error(that.revert_and_refresh);
     };
 
     that.move_item = function(index, splice) {
@@ -268,30 +289,27 @@ app.factory('ListApi',
           'next': next ? next.item : undefined,
           'token': group_api.channel.client_id
         }
-      }).success(function() {
-        $localStorage[storageKey] = that.data;
-      }).error(that.refresh);
+      }).success(that.commit).error(that.revert_and_refresh);
     };
 
     that.clear_collected = function() {
+      var remaining = [];
+      angular.forEach(that.data.items, function(item) {
+        if(!item.collected) {
+          remaining.push(item);
+        }
+      });
+      that.data.items = remaining;
+
       return $http.post(listUrl, null, {
         params: {
           'action': 'clear',
           'token': group_api.channel.client_id
         }
-      }).success(function() {
-        var remaining = [];
-        angular.forEach(that.data.items, function(item) {
-          if(!item.collected) {
-            remaining.push(item);
-          }
-        });
-        that.data.items = remaining;
-        $localStorage[storageKey] = that.data;
-      });
+      }).success(that.commit).error(that.revert_and_refresh);
     };
 
-    that.refresh();
+    that.revert_and_refresh();
   };
 }]);
 
@@ -351,10 +369,6 @@ app.controller('ListController',
 
   var list_api = groupProvider($scope.groupId).list($scope.listId);
 
-  $http.get('/api/'+$scope.groupId+'/').success(function(res) {
-    $scope.group = res;
-  });
-
   $scope.list = list_api;
 
   $scope.filter_items = function(viewValue) {
@@ -369,8 +383,10 @@ app.controller('ListController',
   };
 
   $scope.add_item = function() {
-    list_api.add_item($scope.new_item).then(function() {
-      $scope.new_item = undefined;
+    var item = $scope.new_item;
+    $scope.new_item = undefined;
+    list_api.add_item(item).then(undefined, function() {
+      $scope.new_item = item;
     });
   };
 

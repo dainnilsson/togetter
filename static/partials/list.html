@@ -1,7 +1,7 @@
 <div class="row"><div class="col-xs-12">
 
 <ol class="breadcrumb well well-sm">
-  <li><a href="/{{ group.id }}">{{ group.label }}</a></li>
+  <li><a href="/{{ group_api.id }}">{{ group_api.data.label }}</a></li>
   <li class="active">{{ list.data.label }}</li>
 </ol>
 
@@ -34,7 +34,7 @@
 <form class="form" ng-submit="add_item()">
   <!--<label for="add_item" class="control-label">Add item</label>-->
   <div class="input-group">
-    <input id="add_item" type="text" placeholder="Add item..." ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
+    <input id="add_item" type="text" autocapitalize="off" placeholder="Add item..." ng-model="new_item" typeahead="item for item in filter_items($viewValue)" typeahead-on-select="add_item()" class="form-control">
     <span class="input-group-btn">
       <input class="btn btn-default" type="submit" value="Add" />
     </span>
