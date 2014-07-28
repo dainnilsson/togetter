@@ -39,7 +39,7 @@ def get_group(group_id):
 
 
 def clear_stale_listeners():
-    earliest = datetime.datetime.now() - datetime.timedelta(hours=3)
+    earliest = datetime.datetime.now() - datetime.timedelta(hours=24)
     keys = Listener.query(Listener.created < earliest).fetch(keys_only=True)
     ndb.delete_multi(keys)
 
