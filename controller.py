@@ -4,11 +4,24 @@ from model import Group, List, Item, Store, Ordering, Ingredient, Listener
 from util import encode_id, decode_id, normalize
 import json
 import datetime
+import logging
 
 
 # Signed 64-bit integer
 MAX_POS = (2 ** 63) - 1
 MIN_POS = -(2 ** 63)
+
+
+def channel_duration():
+    now = datetime.datetime.utcnow() - datetime.timedelta(hours=7)  # PST
+    expiry = datetime.datetime(now.year, now.month, now.day, 23, 59)
+    if expiry <= now:
+        expiry += datetime.timedelta(1)
+    minutes = (expiry - now).seconds / 60
+    if minutes < 10:
+        minutes = 24*60
+    logging.info("now: %r, minutes: %i" % (now, minutes))
+    return minutes
 
 
 def create_group(name):
@@ -149,7 +162,8 @@ class GroupController(BaseController):
         listener = Listener(parent=self.key)
         listener_key = listener.put()
         client_id = encode_id(listener_key.id())
-        return client_id, channel.create_channel(client_id)
+        return client_id, channel.create_channel(
+            client_id, duration_minutes=channel_duration())
 
     @property
     def listeners(self):

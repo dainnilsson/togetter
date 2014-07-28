@@ -7,7 +7,7 @@ var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
  */
 
 app.config(['$routeProvider', '$locationProvider',
-		function($routeProvider, $locationProvider) {
+                function($routeProvider, $locationProvider) {
   $locationProvider.html5Mode(true);
 
   $routeProvider.when('/', {
@@ -29,16 +29,16 @@ app.config(['$routeProvider', '$locationProvider',
  */
 
 app.factory('IndexRedirector',
-		['$location', '$localStorage',
-		function($location, $localStorage) {
+                ['$location', '$localStorage',
+                function($location, $localStorage) {
   $location.path($localStorage.last || '/welcome');
 }]);
 
 app.factory('activityMonitor', ['$window', '$document', '$rootScope',
-		function($window, $document, $rootScope) {
+                function($window, $document, $rootScope) {
   var mon = {
     latest: Date.now(),
-    threshold: 10000
+    threshold: 30000
   };
 
   mon.touch = function() {
@@ -59,10 +59,11 @@ app.factory('activityMonitor', ['$window', '$document', '$rootScope',
 }]);
 
 app.factory('Channel',
-		['$rootScope', '$http', 'activityMonitor', 
-		function($rootScope, $http, activityMonitor) {
+                ['$rootScope', '$localStorage', '$http', 'activityMonitor', 
+                function($rootScope, $localStorage, $http, activityMonitor) {
   return function(groupId, connected, onmessage) {
     var that = this;
+    var storageKey = 'channel-'+groupId;
 
     that.close = function() {
       console.log("Channel closed");
@@ -73,43 +74,48 @@ app.factory('Channel',
         that.socket.close();
       }
     }
-    
-    that.reconnect = function() {
-      if(that.socket) {
-        that.socket.close();
-	return;
-      }
 
-      $http.post('/api/'+groupId+'/', null, {
-        params: {'action': 'create_channel'}
-      }).success(function(res) {
-        var token = res.token;
-	that.client_id = res.client_id;
-        that.channel = new goog.appengine.Channel(token);
-        that.socket = that.channel.open();
-        that.socket.onmessage = function(message) {
-          if(message.data == "pong") {
-            clearTimeout(that.timeout);
-	    return;
-	  }
-          var data = angular.fromJson(message.data);
-          console.log("Got message", data, that.client_id);
-          onmessage && $rootScope.$apply(function() { onmessage(data); });
-          activityMonitor.touch();
-        };
-        that.socket.onerror = function() {
-          console.log("onerror");
-        };
-        that.socket.onclose = function() {
-          console.log("onclose");
-	  that.socket = undefined;
-	  $rootScope.$apply(that.reconnect);
-        };
-	connected && connected();
-      }).error(function(data, status, headers, config) {
-        console.log("Error subscribing");
-	that.timeout = setTimeout(that.reconnect, 10000);
-      });
+    that.reconnect = function() {
+      if(!$localStorage[storageKey]) {
+        $http.post('/api/'+groupId+'/', null, {
+          params: {'action': 'create_channel'}
+        }).success(function(res) {
+          $localStorage[storageKey] = {'token': res.token, 'client_id': res.client_id};
+          that.reconnect();
+        }).error(function(data, status, headers, config) {
+          console.log("Error subscribing");
+          that.timeout = setTimeout(that.reconnect, 10000);
+        });
+        return;
+      }
+      var token = $localStorage[storageKey].token;
+      that.client_id = $localStorage[storageKey].client_id;
+      console.log("Connecting channel:", that.client_id);
+
+      that.channel = new goog.appengine.Channel(token);
+      that.socket = that.channel.open();
+      that.socket.onmessage = function(message) {
+        if(message.data == "pong") {
+          clearTimeout(that.timeout);
+          return;
+        }
+        var data = angular.fromJson(message.data);
+        console.log("Got message", data, that.client_id);
+        onmessage && $rootScope.$apply(function() { onmessage(data); });
+        activityMonitor.touch();
+      };
+      that.socket.onerror = function() {
+        console.log("onerror");
+      };
+      that.socket.onclose = function() {
+        console.log("onclose");
+        $localStorage[storageKey] = undefined;
+        that.client_id = undefined;
+        that.channel = undefined;
+        that.socket = undefined;
+        $rootScope.$apply(that.reconnect);
+      };
+      connected && connected();
     };
 
     that.ping = function() {
@@ -119,7 +125,9 @@ app.factory('Channel',
         that.timeout = setTimeout(that.reconnect, 5000);
       }).error(function() {
         console.log("Detected broken channel, reconnect...");
-        that.reconnect();
+        if(that.socket) {
+          that.socket.close();
+        }
       });
     }
 
@@ -129,8 +137,8 @@ app.factory('Channel',
 }]);
 
 app.factory('GroupApi',
-		['$localStorage', '$http', 'ListApi', 'Channel',
-		function($localStorage, $http, ListApi, Channel) {
+                ['$localStorage', '$http', 'ListApi', 'Channel',
+                function($localStorage, $http, ListApi, Channel) {
   return function(groupId) {
     var that = this;
     var groupUrl = '/api/'+groupId+'/';
@@ -202,7 +210,7 @@ app.factory('groupProvider', ['$rootScope', 'GroupApi', function($rootScope, Gro
 }]);
 
 app.factory('ListApi',
-		['$http', '$localStorage', function($http, $localStorage) {
+                ['$http', '$localStorage', function($http, $localStorage) {
   return function(group_api, listId) {
     var that = this;
     var listUrl = '/api/'+group_api.id+'/lists/'+listId+'/';
@@ -226,7 +234,7 @@ app.factory('ListApi',
         params: {
           'action': 'add',
           'item': item,
-	  'token': group_api.channel.client_id
+          'token': group_api.channel.client_id
         }
       }).success(that.refresh);
     };
@@ -238,7 +246,7 @@ app.factory('ListApi',
           'item': item.item,
           'amount': item.amount,
           'collected': item.collected,
-	  'token': group_api.channel.client_id
+          'token': group_api.channel.client_id
         }
       }).success(function() {
         $localStorage[storageKey] = that.data;
@@ -258,7 +266,7 @@ app.factory('ListApi',
           'item': item.item,
           'prev': prev ? prev.item : undefined,
           'next': next ? next.item : undefined,
-	  'token': group_api.channel.client_id
+          'token': group_api.channel.client_id
         }
       }).success(function() {
         $localStorage[storageKey] = that.data;
@@ -288,21 +296,21 @@ app.factory('ListApi',
 }]);
 
 //app.factory('ItemCompleter',
-//		['$cacheProvider']);
+//                ['$cacheProvider']);
 
 /*
  * Controllers
  */
 
 app.controller('IndexController',
-		['$location', '$localStorage',
-		function($location, $localStorage) {
+                ['$location', '$localStorage',
+                function($location, $localStorage) {
   $location.path($localStorage.last || '/welcome');
 }]);
 
 app.controller('WelcomeController',
-		['$scope', '$location', '$http', '$localStorage',
-		function($scope, $location, $http, $localStorage) {
+                ['$scope', '$location', '$http', '$localStorage',
+                function($scope, $location, $http, $localStorage) {
   $scope.set_group = function(groupId) {
     $location.path('/'+groupId);
   }
@@ -317,8 +325,8 @@ app.controller('WelcomeController',
 }]);
 
 app.controller('GroupController',
-		['$scope', '$routeParams', '$http', '$localStorage', '$location', 'groupProvider',
-		function($scope, $routeParams, $http, $localStorage, $location, groupProvider) {
+                ['$scope', '$routeParams', '$http', '$localStorage', '$location', 'groupProvider',
+                function($scope, $routeParams, $http, $localStorage, $location, groupProvider) {
   $localStorage.last = $location.path();
   $scope.groupId = $routeParams.groupId;
 
@@ -334,8 +342,8 @@ app.controller('GroupController',
 }]);
 
 app.controller('ListController',
-		['$scope', '$routeParams', '$http', '$location', 'groupProvider', '$localStorage',
-		function($scope, $routeParams, $http, $location, groupProvider, $localStorage) {
+                ['$scope', '$routeParams', '$http', '$location', 'groupProvider', '$localStorage',
+                function($scope, $routeParams, $http, $location, groupProvider, $localStorage) {
   $localStorage.last = $location.path();
 
   $scope.groupId = $routeParams.groupId;
