@@ -409,7 +409,7 @@ app.controller('GroupController',
   $scope.groupId = $routeParams.groupId;
 
   var group_api = groupProvider($scope.groupId);
-  $scope.$root.title = group_api.data.label;
+  $scope.$root.title = group_api.data ? group_api.data.label : 'Group';
   $scope.group = group_api;
 
   $scope.create_list = function(list_name) {
@@ -429,7 +429,7 @@ app.controller('ListController',
 
   var group_api = groupProvider($scope.groupId);
   var list_api = group_api.list($scope.listId);
-  $scope.$root.title = list_api.data.label;
+  $scope.$root.title = list_api.data ? list_api.data.label : 'List';
 
   $scope.list = list_api;
   $scope.filter_items = group_api.item_completer.filter;
@@ -487,3 +487,14 @@ app.directive('ngReorderable', ['$parse', function($parse) {
     });
   };
 }]);
+
+app.directive('ngSelectOnFocus', function () {
+  return {
+    restrict: 'A',
+    link: function (scope, element, attrs) {
+      element.on('click', function () {
+        this.select();
+      });
+    }
+  };
+});

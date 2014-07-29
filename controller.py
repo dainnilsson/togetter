@@ -2,6 +2,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import channel, memcache
 from model import Group, List, Item, Store, Ordering, Ingredient, Listener
 from util import encode_id, decode_id, normalize
+from collections import OrderedDict
 import json
 import datetime
 import logging
@@ -108,14 +109,14 @@ class GroupController(BaseController):
     @property
     def lists(self):
         lists = List.query(ancestor=self.key) \
-            .fetch(projection=[List.label])
-        return dict(map(lambda x: (encode_id(x.key.id()), x.label), lists))
+            .order(List.label).fetch(projection=[List.label])
+        return OrderedDict([(encode_id(x.key.id()), x.label) for x in lists])
 
     @property
     def stores(self):
         stores = Store.query(ancestor=self.key) \
-            .fetch(projection=[Store.label])
-        return dict(map(lambda x: (encode_id(x.key.id()), x.label), stores))
+            .order(Store.label).fetch(projection=[Store.label])
+        return OrderedDict([(encode_id(x.key.id()), x.label) for x in stores])
 
     @property
     def data(self):

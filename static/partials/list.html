@@ -30,7 +30,7 @@
               <span class="glyphicon glyphicon-minus"></span>
             </button>
           </span>
-          <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" />
+          <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="update_item(item)" ng-select-on-focus />
           <span class="input-group-btn">
             <button type="button" class="btn btn-default" ng-click="increment_amount(item)">
               <span class="glyphicon glyphicon-plus"></span>
