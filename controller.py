@@ -1,5 +1,5 @@
 from google.appengine.ext import ndb
-from google.appengine.api import channel
+from google.appengine.api import channel, memcache
 from model import Group, List, Item, Store, Ordering, Ingredient, Listener
 from util import encode_id, decode_id, normalize
 import json
@@ -10,6 +10,10 @@ import logging
 # Signed 64-bit integer
 MAX_POS = (2 ** 63) - 1
 MIN_POS = -(2 ** 63)
+
+# Memcache keys
+INGREDIENT = "_INGREDIENT"
+LISTENERS = "_LISTENERS"
 
 
 def channel_duration():
@@ -151,8 +155,12 @@ class GroupController(BaseController):
 
     @property
     def ingredients(self):
-        keys = Ingredient.query(ancestor=self.key).fetch(keys_only=True)
-        return [key.id() for key in keys]
+        data = memcache.get(INGREDIENT, namespace=self.id)
+        if data is None:
+            keys = Ingredient.query(ancestor=self.key).fetch(keys_only=True)
+            data = [key.id() for key in keys]
+            memcache.set(INGREDIENT, data, namespace=self.id)
+        return data
 
     def autocomplete(self, partial):
         q = Ingredient.query(ancestor=self.key)
@@ -167,13 +175,18 @@ class GroupController(BaseController):
         listener = Listener(parent=self.key)
         listener_key = listener.put()
         client_id = encode_id(listener_key.id())
+        memcache.delete(LISTENERS, namespace=self.id)
         return client_id, channel.create_channel(
             client_id, duration_minutes=channel_duration())
 
     @property
     def listeners(self):
-        return [encode_id(key.id()) for key in
-                Listener.query(ancestor=self.key).fetch(keys_only=True)]
+        data = memcache.get(LISTENERS, namespace=self.id)
+        if data is None:
+            data = [encode_id(key.id()) for key in
+                    Listener.query(ancestor=self.key).fetch(keys_only=True)]
+            memcache.set(LISTENERS, data, namespace=self.id)
+        return data
 
     def notify(self, token):
         for _list in [self.list(key) for key in self.lists]:
@@ -210,15 +223,19 @@ class ListController(BaseController):
             item.position = ordering.position
         ndb.put_all(items)
         self.entity.put()
+        memcache.delete(self.id, namespace=self.group.id)
 
     @property
     def data(self):
-        data = super(ListController, self).data
-        store = StoreController(self.group, self.store)
-        data.update({
-            'store': {'label': store.label, 'id': store.id},
-            'items': [item.data for item in self.items]
-        })
+        data = memcache.get(self.id, namespace=self.group.id)
+        if not data:
+            data = super(ListController, self).data
+            store = StoreController(self.group, self.store)
+            data.update({
+                'store': {'label': store.label, 'id': store.id},
+                'items': [item.data for item in self.items]
+            })
+            memcache.set(self.id, data, namespace=self.group.id)
         return data
 
     def add_item(self, item_id, amount):
@@ -226,6 +243,7 @@ class ListController(BaseController):
             .filter(Ingredient.normalized == normalize(item_id)).get()
         if not ingredient:
             Ingredient(parent=self.group.key, id=item_id).put()
+            memcache.delete(INGREDIENT, namespace=self.group.id)
         else:
             item_id = ingredient.key.id()
 
@@ -260,6 +278,7 @@ class ListController(BaseController):
                 id=item_id,
                 amount=amount,
                 position=pos).put()
+        memcache.delete(self.id, namespace=self.group.id)
         return self.item(item_id)
 
     def item(self, item_id):
@@ -272,6 +291,7 @@ class ListController(BaseController):
 
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()
+        memcache.delete(self.id, namespace=self.group.id)
 
     def reorder(self, item_id, prev=None, next=None):
         prev_pos = Item.get_by_id(prev, parent=self.key).position \
@@ -286,12 +306,14 @@ class ListController(BaseController):
             ordering = Ordering.get_by_id(item_id, parent=store)
             ordering.position = item.position
             ordering.put()
+        memcache.delete(self.id, namespace=self.group.id)
 
     def clear(self):
         keys = Item.query(ancestor=self.key) \
             .filter(Item.collected == True) \
             .fetch(keys_only=True)
         ndb.delete_multi(keys)
+        memcache.delete(self.id, namespace=self.group.id)
 
 
 class ItemController(BaseController):
@@ -313,6 +335,7 @@ class ItemController(BaseController):
         if self.entity.collected != collected:
             self.entity.collected = collected
             self.entity.put()
+            memcache.delete(self.list.id, namespace=self.list.group.id)
 
     @property
     def amount(self):
@@ -323,6 +346,7 @@ class ItemController(BaseController):
         if self.entity.amount != amount:
             self.entity.amount = amount
             self.entity.put()
+            memcache.delete(self.list.id, namespace=self.list.group.id)
 
     @property
     def data(self):
@@ -355,3 +379,4 @@ class StoreController(BaseController):
                 for item in items:
                     item.position = order_table[item.key.id()]
                 ndb.put_multi(items)
+                memcache.delete(_list.id, namespace=self.group.id)
