@@ -44,10 +44,17 @@
   function activityMonitor($window, $document, $rootScope) {
     var mon = {
       latest: Date.now(),
-      threshold: 30000
+      threshold: 30000,
+      touch: touch
     };
+
+    angular.element($document)
+      .on('visibilitychange msvisibilitychange mozvisibilitychange webkitvisibilitychange', mon.touch);
+    angular.element($window)
+      .on('online focus touchmove mousemove mousedown mousewheel keydown DOMMouseScroll', mon.touch);
+    return mon;
   
-    mon.touch = function() {
+    function touch() {
       var now = Date.now();
       if(now - mon.latest > mon.threshold) {
         console.log("Return from idle!");
@@ -55,23 +62,23 @@
       }
       mon.latest = now;
     }
-  
-    var d = angular.element($document);
-    d.on('visibilitychange msvisibilitychange mozvisibilitychange webkitvisibilitychange', mon.touch);
-    var w = angular.element($window);
-    w.on('online focus touchmove mousemove mousedown mousewheel keydown DOMMouseScroll', mon.touch);
-  
-    return mon;
   }
   activityMonitor.$inject = ['$window', '$document', '$rootScope'];
   
   app.factory('Channel', Channel);
-  function Channel($rootScope, $localStorage, $http, activityMonitor) {
+  function Channel($rootScope, $localStorage, $http, $timeout, activityMonitor) {
     return function(groupId, connected, onmessage) {
       var that = this;
       var storageKey = 'channel-'+groupId;
+      
+      that.close = close;
+      that.reconnect = reconnect;
+      that.ping = ping;
+
+      $rootScope.$on('awake', that.ping);
+      that.reconnect();
   
-      that.close = function() {
+      function close() {
         console.log("Channel closed");
         that.reconnect = undefined;
         clearTimeout(that.timeout);
@@ -81,7 +88,7 @@
         }
       }
   
-      that.reconnect = function() {
+      function reconnect() {
         if(!$localStorage[storageKey]) {
           $http.post('/api/'+groupId+'/', null, {
             params: {'action': 'create_channel'}
@@ -90,7 +97,7 @@
             that.reconnect();
           }).error(function(data, status, headers, config) {
             console.log("Error subscribing");
-            that.timeout = setTimeout(that.reconnect, 10000);
+            that.timeout = $timeout(that.reconnect, 10000, true);
           });
           return;
         }
@@ -122,13 +129,13 @@
           $rootScope.$apply(that.reconnect);
         };
         connected && connected();
-      };
+      }
   
-      that.ping = function() {
+      function ping() {
         $http.post('/api/'+groupId+'/', null, {
           params: {'action': 'ping_channel', 'token': that.client_id}
         }).success(function() {
-          that.timeout = setTimeout(that.reconnect, 5000);
+          that.timeout = $timeout(that.reconnect, 5000, true);
         }).error(function() {
           console.log("Detected broken channel, reconnect...");
           if(that.socket) {
@@ -136,32 +143,36 @@
           }
         });
       }
-  
-      $rootScope.$on('awake', that.ping);
-      that.reconnect();
     };
   }
-  Channel.$inject = ['$rootScope', '$localStorage', '$http', 'activityMonitor'];
+  Channel.$inject = ['$rootScope', '$localStorage', '$http', '$timeout', 'activityMonitor'];
   
   app.factory('ItemCompleter', ItemCompleter);
   ItemCompleter.$inject = ['$http'];
   function ItemCompleter($http) {
     return function(groupId) {
       var that = this;
-      var ingredients = [];
+
+      that.ingredients = [];
+
+      that.refresh = refresh;
+      that.add_ingredient = add_ingredient;
+      that.filter = filter;
       
-      that.refresh = function() {
+      that.refresh();
+
+      function refresh() {
         $http.get('/api/'+groupId+'/ingredients/').success(function(res) {
           that.ingredients = res;
         });
-      };
+      }
     
-      that.add_ingredient = function(ingredient) {
+      function add_ingredient(ingredient) {
         this.ingredients.push(ingredient);
         this.ingredients.sort();
-      };
+      }
   
-      that.filter = function(partial) {
+      function filter(partial) {
         partial = partial.trim();
         var matches = [];
         var exact = false;
@@ -178,7 +189,7 @@
             var word = words[j];
             if(word.toLowerCase().substr(0, partial.length) == partial_lower) {
               matches.push(ingredient);
-  	    break;
+              break;
             }
           }
         }
@@ -186,9 +197,7 @@
           matches.unshift(partial);
         }
         return matches;
-      };
-  
-      that.refresh();
+      }
     };
   }
   
@@ -198,31 +207,45 @@
       var that = this;
       var groupUrl = '/api/'+groupId+'/';
       
+      that._lists = {};
       that.id = groupId;
+      that.item_completer = new ItemCompleter(groupId);
+      that.channel = new Channel(groupId, on_connect, on_message);
+
+      that.set_data = set_data;
+      that.commit = commit;
+      that.revert = revert;
+      that.refresh = refresh;
+      that.revert_and_refresh = revert_and_refresh;
+      that.create_list = create_list;
+      that.list = list;
+      that.destroy = destroy;
   
-      that.set_data = function(data) {
+      that.revert_and_refresh();
+
+      function set_data(data) {
         that.data = data;
         that.commit();
-      };
+      }
   
-      that.commit = function() {
+      function commit() {
         $localStorage[groupId] = angular.copy(that.data);
       }
   
-      that.revert = function() {
+      function revert() {
         that.data = angular.copy($localStorage[groupId]);
-      };
+      }
   
-      that.refresh = function() {
+      function refresh() {
         $http.get(groupUrl).success(that.set_data);
-      };
+      }
   
-      that.revert_and_refresh = function() {
+      function revert_and_refresh() {
         that.revert();
         that.refresh();
       }
   
-      that.create_list = function(list_name) {
+      function create_list(list_name) {
         return $http.post(groupUrl, null, {
           params: {
             'action': 'create_list',
@@ -232,45 +255,43 @@
           console.log("created", resp.data.id);
           return that.list(resp.data.id).id;
         });
-      };
+      }
   
-      that._lists = {};
-      that.list = function(listId) {
+      function list(listId) {
         if(!that._lists[listId]) {
           that._lists[listId] = new ListApi(that, listId);
         }
         return that._lists[listId];
-      };
+      }
   
-      that.destroy = function() {
+      function destroy() {
         console.log("destructor");
         that.channel.close();
-      };
+      }
   
-      that.item_completer = new ItemCompleter(groupId);
-  
-      that.channel = new Channel(groupId, function() {
+      function on_connect() {
         console.log('reconnect');
         for(var list_id in that._lists) {
           that.list(list_id).refresh();
         }
-      }, function(list_data) {
+      }
+      
+      function on_message(list_data) {
         console.log("Remote modification!", list_data);
         that.list(list_data.id).set_data(list_data);
         for(var i=0; i<list_data.items.length; i++) {
           var item = list_data.items[i];
-  	if(that.item_completer.ingredients.indexOf(item.item) == -1) {
+          if(that.item_completer.ingredients.indexOf(item.item) == -1) {
             that.item_completer.add_ingredient(item.item);
-  	}
+          }
         }
-      });
-  
-      that.revert_and_refresh();
+      }
     };
   }
   GroupApi.$inject = ['$localStorage', '$http', 'ListApi', 'Channel', 'ItemCompleter'];
   
-  app.factory('groupProvider', ['$rootScope', 'GroupApi', function($rootScope, GroupApi) {
+  app.factory('groupProvider', groupProvider);
+  function groupProvider($rootScope, GroupApi) {
     return function(groupId) {
       if($rootScope.group_api) {
         if($rootScope.group_api.data.id == groupId) {
@@ -279,10 +300,10 @@
         $rootScope.group_api.destroy();
       }
       $rootScope.group_api = new GroupApi(groupId);
-      window.root = $rootScope;
       return $rootScope.group_api;
     }
-  }]);
+  }
+  groupProvider.$inject = ['$rootScope', 'GroupApi'];
   
   app.factory('ListApi', ListApi);
   function ListApi($http, $localStorage) {
@@ -292,31 +313,43 @@
       var storageKey = group_api.id+'/'+listId;
   
       that.id = listId;
+
+      that.set_data = set_data;
+      that.commit = commit;
+      that.revert = revert;
+      that.refresh = refresh;
+      that.revert_and_refresh = revert_and_refresh;
+      that.add_item = add_item;
+      that.update_item = update_item;
+      that.move_item = move_item;
+      that.clear_collected = clear_collected;
   
-      that.set_data = function(data) {
+      that.revert_and_refresh();
+
+      function set_data(data) {
         that.data = data;
         that.commit();
-      };
+      }
   
-      that.commit = function() {
+      function commit() {
         $localStorage[storageKey] = angular.copy(that.data);
       }
   
-      that.revert = function() {
+      function revert() {
         that.data = angular.copy($localStorage[storageKey]);
-      };
+      }
   
-      that.refresh = function() {
+      function refresh() {
         console.log("Refresh list: "+that.id);
         $http.get(listUrl).success(that.set_data);
-      };
+      }
   
-      that.revert_and_refresh = function() {
+      function revert_and_refresh() {
         that.revert();
         that.refresh();
       }
   
-      that.add_item = function(item) {
+      function add_item(item) {
         return $http.post(listUrl, null, {
           params: {
             'action': 'add',
@@ -327,9 +360,9 @@
           group_api.item_completer.add_ingredient(item);
           that.refresh();
         });
-      };
+      }
   
-      that.update_item = function(item) {
+      function update_item(item) {
         return $http.post(listUrl, null, {
           params: {
             'action': 'update',
@@ -339,9 +372,9 @@
             'token': group_api.channel.client_id
           }
         }).success(that.commit).error(that.revert_and_refresh);
-      };
+      }
   
-      that.move_item = function(index, splice) {
+      function move_item(index, splice) {
         if(index == splice) {
           return;
         }
@@ -361,9 +394,9 @@
             'token': group_api.channel.client_id
           }
         }).success(that.commit).error(that.revert_and_refresh);
-      };
+      }
   
-      that.clear_collected = function() {
+      function clear_collected() {
         var remaining = [];
         angular.forEach(that.data.items, function(item) {
           if(!item.collected) {
@@ -378,9 +411,7 @@
             'token': group_api.channel.client_id
           }
         }).success(that.commit).error(that.revert_and_refresh);
-      };
-  
-      that.revert_and_refresh();
+      }
     };
   }
   ListApi.$inject = ['$http', '$localStorage'];
