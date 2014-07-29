@@ -16,6 +16,12 @@
     <script type="text/javascript" src="/static/js/app.js"></script>
 
     <style type="text/css">
+
+    label.collected {
+      text-decoration: line-through;
+    }
+
+    /*Slip.js drag-and-drop reordering*/
     .slip-reordering {
       box-shadow: 0 2px 10px rgba(0,0,0,0.45);
     }
@@ -31,7 +37,20 @@
       cursor: default;
       padding: 0 15px;
     }
+
+    /* Remove spinners from amount inputs */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      /* display: none; <- Crashes Chrome on hover */
+      -webkit-appearance: none;
+      margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+    }
+    input[type='number'] {
+      -moz-appearance:textfield;
+    }
     </style>
+
+    <title>ToGetter - {{ title }}</title>
   </head>
   <body>
     <div class="container">

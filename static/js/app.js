@@ -333,11 +333,15 @@ app.factory('ListApi',
     };
 
     that.move_item = function(index, splice) {
+      if(index == splice) {
+        return;
+      }
       var item = that.data.items[index];
       that.data.items.splice(index, 1);
       that.data.items.splice(splice, 0, item);
       var prev = that.data.items[splice-1];
       var next = that.data.items[splice+1];
+      that.data.items = angular.copy(that.data.items); //Needed to refresh sometimes.
 
       return $http.post(listUrl, null, {
         params: {
@@ -384,6 +388,7 @@ app.controller('IndexController',
 app.controller('WelcomeController',
                 ['$scope', '$location', '$http', '$localStorage',
                 function($scope, $location, $http, $localStorage) {
+  $scope.$root.title = 'welcome';
   $scope.set_group = function(groupId) {
     $location.path('/'+groupId);
   }
@@ -404,8 +409,8 @@ app.controller('GroupController',
   $scope.groupId = $routeParams.groupId;
 
   var group_api = groupProvider($scope.groupId);
+  $scope.$root.title = group_api.data.label;
   $scope.group = group_api;
-  window.group_api = group_api;
 
   $scope.create_list = function(list_name) {
     group_api.create_list(list_name).then(function(listId) {
@@ -424,6 +429,7 @@ app.controller('ListController',
 
   var group_api = groupProvider($scope.groupId);
   var list_api = group_api.list($scope.listId);
+  $scope.$root.title = list_api.data.label;
 
   $scope.list = list_api;
   $scope.filter_items = group_api.item_completer.filter;
@@ -437,9 +443,20 @@ app.controller('ListController',
   };
 
   $scope.update_item = list_api.update_item;
+  $scope.increment_amount = function(item) {
+    item.amount++;
+    list_api.update_item(item);
+  };
+  $scope.decrement_amount = function(item) {
+    if(item.amount > 1) {
+      item.amount--;
+      list_api.update_item(item);
+    }
+  };
 
   $scope.move_item = function(e) {
     list_api.move_item(e.detail.originalIndex, e.detail.spliceIndex);
+    window.root = $scope;
   };
 
   $scope.clear_collected = list_api.clear_collected;
@@ -465,7 +482,7 @@ app.directive('ngReorderable', ['$parse', function($parse) {
     });
     element.bind("slip:beforewait", function(event) {
       if(event.target.className.indexOf('slip-instant') > -1) {
-        //event.preventDefault();
+        event.preventDefault();
       }
     });
   };
