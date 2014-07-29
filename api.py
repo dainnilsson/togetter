@@ -70,7 +70,6 @@ class ListHandler(BaseHandler):
                     item.collected = json.loads(self.request.get('collected'))
                 if 'amount' in self.request.arguments():
                     item.amount = int(self.request.get('amount'))
-                # TODO: Only notify once!
             elif action == 'clear':
                 _list.clear()
             elif action == 'reorder':

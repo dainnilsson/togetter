@@ -35,4 +35,3 @@ class Item(ndb.Model):  # List as parent
 
 class Listener(ndb.Model):  # Group as parent
     created = ndb.DateTimeProperty(auto_now_add=True)
-    lists = ndb.KeyProperty(kind=List, repeated=True)
