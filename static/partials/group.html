@@ -1,7 +1,7 @@
 <div class="row"><div class="col-xs-12">
 
 <ol class="breadcrumb well well-sm">
-  <li class="active">{{ group.data.label }}</a></li>
+  <li class="active">{{ vm.group.data.label }}</a></li>
 </ol>
 
 </div></div>
@@ -13,17 +13,17 @@
 <h2>Lists</h2>
 <div class="panel panel-default">
 <ul class="list-group">
-  <li class="list-group-item" ng-repeat="list in group_api.data.lists">
+  <li class="list-group-item" ng-repeat="list in vm.group.data.lists">
     <div class="row">
       <div class="col-xs-12">
-        <a class="btn" href="/{{ groupId }}/{{ list.id }}">{{ list.label }}</a>
+        <a class="btn" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
       </div>
     </div>
   </li>
 </ul>
 </div>
 
-<form class="form" ng-submit="create_list(new_list)">
+<form class="form" ng-submit="vm.create_list(new_list)">
   <div class="input-group">
     <input id="add_list" type="text" placeholder="New list" ng-model="new_list" class="form-control">
     <span class="input-group-btn">

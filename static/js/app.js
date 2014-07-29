@@ -19,13 +19,16 @@
       resolve: { redirect: 'IndexRedirector' }
     }).when('/welcome', {
       templateUrl: '/static/partials/welcome.html',
-      controller: 'WelcomeController'
+      controller: 'WelcomeController',
+      controllerAs: 'vm'
     }).when('/:groupId', {
       templateUrl: '/static/partials/group.html',
-      controller: 'GroupController'
+      controller: 'GroupController',
+      controllerAs: 'vm'
     }).when('/:groupId/:listId', {
       templateUrl: '/static/partials/list.html',
-      controller: 'ListController'
+      controller: 'ListController',
+      controllerAs: 'vm'
     });
   }
   config.$inject = ['$routeProvider', '$locationProvider'];
@@ -33,6 +36,23 @@
   /*
    * Services
    */
+
+  app.factory('title', title);
+  function title($rootScope) {
+    return {
+      get: get,
+      set: set
+    }
+
+    function get() {
+      return $rootScope.title;
+    }
+
+    function set(title_value) {
+      $rootScope.title = title_value;
+    }
+  }
+  title.$inject = ['$rootScope'];
   
   app.factory('IndexRedirector', IndexRedirector);
   function IndexRedirector($location, $localStorage) {
@@ -427,83 +447,93 @@
   IndexController.$inject = ['$location', '$localStorage'];
   
   app.controller('WelcomeController', WelcomeController);
-  function WelcomeController($scope, $location, $http, $localStorage) {
-    $scope.$root.title = 'welcome';
-    $scope.set_group = function(groupId) {
+  function WelcomeController($location, $http, $localStorage) {
+    var that = this;
+    
+    that.set_group = set_group;
+    that.create_group = create_group;
+
+    title.set('welcome');
+
+    function set_group(groupId) {
       $location.path('/'+groupId);
     }
   
-    $scope.create_group = function(group_name) {
+    function create_group(group_name) {
       $http.post('/api/create', null, {
         params: {'label': group_name}
       }).success(function(data) {
         $location.path('/'+data.id);
       });
-    };
+    }
   }
-  WelcomeController.$inject = ['$scope', '$location', '$http', '$localStorage'];
+  WelcomeController.$inject = ['$location', '$http', '$localStorage', 'title'];
   
   app.controller('GroupController', GroupController);
-  function GroupController($scope, $routeParams, $http, $localStorage, $location, groupProvider) {
+  function GroupController($routeParams, $http, $localStorage, $location, groupProvider, title) {
+    var that = this;
+
+    that.groupId = $routeParams.groupId;
+    that.group = groupProvider(that.groupId);
+
+    that.create_list = create_list;
+
+    title.set(that.group.data ? that.group.data.label : 'Group');
     $localStorage.last = $location.path();
-    $scope.groupId = $routeParams.groupId;
   
-    var group_api = groupProvider($scope.groupId);
-    $scope.$root.title = group_api.data ? group_api.data.label : 'Group';
-    $scope.group = group_api;
-  
-    $scope.create_list = function(list_name) {
-      group_api.create_list(list_name).then(function(listId) {
-        $location.path('/'+$scope.groupId+'/'+listId);
+    function create_list(list_name) {
+      that.group.create_list(list_name).then(function(listId) {
+        $location.path('/'+that.groupId+'/'+listId);
       });
     }
   }
-  GroupController.$inject = ['$scope', '$routeParams', '$http', '$localStorage', '$location', 'groupProvider'];
+  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', 'groupProvider', 'title'];
   
   app.controller('ListController', ListController);
-  function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider) {
+  function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider, title) {
+    var that = this;
+  
+    that.groupId = $routeParams.groupId;
+    that.listId = $routeParams.listId;
+    that.group = groupProvider(that.groupId);
+    that.list = that.group.list(that.listId);
+
+    that.filter_items = that.group.item_completer.filter;
+    that.add_item = add_item;
+    that.move_item = move_item;
+    that.update_item = that.list.update_item;
+    that.clear_collected = that.list.clear_collected;
+    that.increment_amount = increment_amount;
+    that.decrement_amount = decrement_amount;
+
+    $scope.$on('awake', that.list.refresh);
+    title.set(that.list.data ? that.list.data.label : 'List');
     $localStorage.last = $location.path();
   
-    $scope.groupId = $routeParams.groupId;
-    $scope.listId = $routeParams.listId;
-  
-    var group_api = groupProvider($scope.groupId);
-    var list_api = group_api.list($scope.listId);
-    $scope.$root.title = list_api.data ? list_api.data.label : 'List';
-  
-    $scope.list = list_api;
-    $scope.filter_items = group_api.item_completer.filter;
-  
-    $scope.add_item = function() {
-      var item = $scope.new_item;
-      $scope.new_item = undefined;
-      list_api.add_item(item).then(undefined, function() {
-        $scope.new_item = item;
+    function add_item(item) {
+      that.new_item = undefined;
+      that.list.add_item(item).then(undefined, function() {
+        that.new_item = item;
       });
-    };
+    }
   
-    $scope.update_item = list_api.update_item;
-    $scope.increment_amount = function(item) {
+    function increment_amount(item) {
       item.amount++;
-      list_api.update_item(item);
-    };
-    $scope.decrement_amount = function(item) {
+      that.list.update_item(item);
+    }
+
+    function decrement_amount(item) {
       if(item.amount > 1) {
         item.amount--;
-        list_api.update_item(item);
+        that.list.update_item(item);
       }
-    };
+    }
   
-    $scope.move_item = function(e) {
-      list_api.move_item(e.detail.originalIndex, e.detail.spliceIndex);
-      window.root = $scope;
-    };
-  
-    $scope.clear_collected = list_api.clear_collected;
-  
-    $scope.$on('awake', list_api.refresh);
+    function move_item(e) {
+      that.list.move_item(e.detail.originalIndex, e.detail.spliceIndex);
+    }
   }
-  ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider'];
+  ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider', 'title'];
   
   /*
    * Directives
