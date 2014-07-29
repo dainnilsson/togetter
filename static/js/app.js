@@ -541,23 +541,29 @@
   
   app.directive('ngReorderable', ngReorderable);
   function ngReorderable($parse) {
-    return function(scope, element, attrs) {
-      new Slip(element[0]);
-      var fn = $parse(attrs.onReorder);
-      element.bind("slip:reorder", function(event) {
+    return {
+      restrict: 'A',
+      link: link
+    }
+
+    function link(scope, element, attrs) {
+      var slip = new Slip(element[0]);
+
+      element.on('slip:reorder', function(event) {
         event.target.parentNode.insertBefore(event.target, event.detail.insertBefore);
         scope.$apply(function() {
-          fn(scope, {$event:event});
+          $parse(attrs.onReorder)(scope, {$event:event});
         });
-  
-        return false;
       });
-      element.bind("slip:beforewait", function(event) {
+
+      element.on('slip:beforewait', function(event) {
         if(event.target.className.indexOf('slip-instant') > -1) {
           event.preventDefault();
         }
       });
-    };
+
+      element.on('$destroy', slip.detach);
+    }
   }
   ngReorderable.$inject = ['$parse'];
   
@@ -565,12 +571,12 @@
   function ngSelectOnFocus() {
     return {
       restrict: 'A',
-      link: function (scope, element, attrs) {
-        element.on('click', function () {
-          this.select();
-        });
-      }
-    };
+      link: link
+    }
+
+    function link(scope, element, attrs) {
+      element.on('click', element[0].select);
+    }
   }
   ngSelectOnFocus.$inject = [];
 
