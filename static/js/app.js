@@ -5,7 +5,7 @@
    * Module
    */
   
-  var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap']);
+  var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap', 'ngAnimate']);
   
   /*
    * Configuration

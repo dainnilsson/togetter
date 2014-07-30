@@ -15,7 +15,7 @@
 <h2>Items</h2>
 <form class="form panel panel-default">
 <ul class="list-group" ng-reorderable on-reorder="vm.move_item($event)">
-  <li class="list-group-item" ng-repeat="item in vm.list.data.items" ng-hide="item.collected">
+  <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-hide="item.collected">
     <div class="row">
       <div class="col-xs-6 col-sm-8 checkbox">
         <label>
@@ -61,7 +61,7 @@
 <h2>Collected items</h2>
 <form class="form panel panel-default">
 <ul class="list-group">
-  <li class="list-group-item" ng-repeat="item in vm.list.data.items" ng-show="item.collected">
+  <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-show="item.collected">
     <div class="row">
       <div class="col-xs-8 checkbox">
         <label class="collected">
