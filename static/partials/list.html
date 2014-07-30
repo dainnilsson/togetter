@@ -1,85 +1,91 @@
-<div class="row"><div class="col-xs-12">
-
-<ol class="breadcrumb well well-sm">
-  <li><a href="/{{ vm.groupId }}">{{ vm.group.data.label }}</a></li>
-  <li class="active">{{ vm.list.data.label }}</li>
-</ol>
-
-</div></div>
-
-<!--<span>Store: {{ list.data.store.label }}</span>-->
-
-<div class="row"><div class="col-xs-12 col-md-6">
-<div class="well well-sm">
-
-<h2>Items</h2>
-<form class="form panel panel-default">
-<ul class="list-group" ng-reorderable on-reorder="vm.move_item($event)">
-  <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-hide="item.collected">
-    <div class="row">
-      <div class="col-xs-6 col-sm-8 checkbox">
-        <label>
-          <input type="checkbox" ng-model="item.collected" ng-change="vm.update_item(item)" />
-          {{ item.item }}
-        </label>
-      </div>
-      <div class="col-xs-6 col-sm-4">
-        <div class="input-group" style="padding-top: 3px">
-          <span class="input-group-btn">
-		  <button type="button" class="btn btn-default" ng-click="vm.decrement_amount(item)" ng-disabled="item.amount == 1">
-              <span class="glyphicon glyphicon-minus"></span>
-            </button>
-          </span>
-          <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="vm.update_item(item)" ng-select-on-focus />
-          <span class="input-group-btn">
-            <button type="button" class="btn btn-default" ng-click="vm.increment_amount(item)">
-              <span class="glyphicon glyphicon-plus"></span>
-            </button>
-          </span>
-       </div>
-
-      </div>
-    </div>
-  </li>
-</ul>
-</form>
-
-<form class="form" ng-submit="vm.add_item(vm.new_item)">
-  <!--<label for="add_item" class="control-label">Add item</label>-->
-  <div class="input-group">
-    <input id="add_item" type="text" autocapitalize="off" placeholder="Add item..." ng-model="vm.new_item" typeahead="item for item in vm.filter_items($viewValue)" typeahead-on-select="vm.add_item(vm.new_item)" class="form-control">
-    <span class="input-group-btn">
-      <input class="btn btn-default" type="submit" value="Add" />
-    </span>
+<!-- Breadcrumb row -->
+<div class="row">
+  <div class="col-xs-12">
+    <ol class="breadcrumb well well-sm">
+      <li><a href="/{{ vm.groupId }}">{{ vm.group.data.label }}</a></li>
+      <li class="active">{{ vm.list.data.label }}</li>
+    </ol>
   </div>
-</form>
 </div>
-</div><div class="col-xs-12 col-md-6">
 
-<div class="well well-sm">
+<!-- Content row -->
+<div class="row">
 
-<h2>Collected items</h2>
-<form class="form panel panel-default">
-<ul class="list-group">
-  <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-show="item.collected">
-    <div class="row">
-      <div class="col-xs-8 checkbox">
-        <label class="collected">
-          <input type="checkbox" ng-model="item.collected" ng-change="vm.update_item(item)" />
-          {{ item.item }}
-        </label>
-      </div>
-      <div class="col-xs-4" style="text-align: right; margin-top: 9px;">
-        <span class="badge">{{ item.amount }}</span>
-      </div>
+  <!-- Items column -->
+  <div class="col-xs-12 col-md-6">
+    <div class="well well-sm">
+
+      <h2>Items</h2>
+
+      <form class="form panel panel-default">
+        <ul class="list-group" ng-reorderable on-reorder="vm.move_item($event)">
+          <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-hide="item.collected">
+            <div class="row">
+              <div class="col-xs-6 col-sm-8 checkbox">
+                <label>
+                  <input type="checkbox" ng-model="item.collected" ng-change="vm.update_item(item)" />
+                  {{ item.item }}
+                </label>
+              </div>
+              <div class="col-xs-6 col-sm-4">
+                <div class="input-group" style="padding-top: 3px">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-default" ng-click="vm.decrement_amount(item)" ng-disabled="item.amount == 1">
+                      <span class="glyphicon glyphicon-minus"></span>
+                    </button>
+                  </span>
+                  <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="vm.update_item(item)" ng-select-on-focus />
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-default" ng-click="vm.increment_amount(item)">
+                      <span class="glyphicon glyphicon-plus"></span>
+                    </button>
+                  </span>
+               </div>
+
+              </div>
+            </div>
+          </li>
+        </ul>
+      </form>
+
+      <form class="form" ng-submit="vm.add_item(vm.new_item)">
+        <div class="input-group">
+          <input type="text" autocapitalize="off" placeholder="Add item..." ng-model="vm.new_item" typeahead="item for item in vm.filter_items($viewValue)" typeahead-on-select="vm.add_item(vm.new_item)" class="form-control">
+          <span class="input-group-btn">
+            <input class="btn btn-default" type="submit" value="Add" />
+          </span>
+        </div>
+      </form>
     </div>
-  </li>
-</ul>
-</form>
+  </div>
 
-<button class="form-control btn btn-danger" ng-click="vm.clear_collected()">Clear collected items</button>
+  <!-- Collected column -->
+  <div class="col-xs-12 col-md-6">
+    <div class="well well-sm">
 
-</div>
+      <h2>Collected items</h2>
 
-</div>
+      <form class="form panel panel-default">
+        <ul class="list-group">
+          <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-show="item.collected">
+            <div class="row">
+              <div class="col-xs-8 checkbox">
+                <label class="collected">
+                  <input type="checkbox" ng-model="item.collected" ng-change="vm.update_item(item)" />
+                  {{ item.item }}
+                </label>
+              </div>
+              <div class="col-xs-4" style="text-align: right; margin-top: 9px;">
+                <span class="badge">{{ item.amount }}</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </form>
+
+      <button class="form-control btn btn-danger" ng-click="vm.clear_collected()">Clear collected items</button>
+
+    </div>
+  </div>
+
 </div>

@@ -1,36 +1,94 @@
-<div class="row"><div class="col-xs-12">
-
-<ol class="breadcrumb well well-sm">
-  <li class="active">{{ vm.group.data.label }}</a></li>
-</ol>
-
-</div></div>
-
-
-<div class="row"><div class="col-xs-12">
-<div class="well well-sm">
-
-<h2>Lists</h2>
-<div class="panel panel-default">
-<ul class="list-group">
-  <li class="list-group-item" ng-repeat="list in vm.group.data.lists">
-    <div class="row">
-      <div class="col-xs-12">
-        <a class="btn" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
-      </div>
-    </div>
-  </li>
-</ul>
-</div>
-
-<form class="form" ng-submit="vm.create_list(new_list)">
-  <div class="input-group">
-    <input id="add_list" type="text" placeholder="New list" ng-model="new_list" class="form-control">
-    <span class="input-group-btn">
-      <input class="btn btn-default" type="submit" value="Create" />
-    </span>
+<!-- Breadcrumb row -->
+<div class="row">
+  <div class="col-xs-12">
+    <ol class="breadcrumb well well-sm">
+      <li class="active">{{ vm.group.data.label }}</a></li>
+    </ol>
   </div>
-</form>
+</div>
+
+<!-- Content row -->
+<div class="row">
+
+  <!-- List column -->
+  <div class="col-xs-12 col-md-4">
+    <div class="well well-sm">
+
+      <h2>Lists</h2>
+
+      <div class="panel panel-default">
+        <ul class="list-group">
+          <li class="list-group-item" ng-repeat="list in vm.group.data.lists">
+            <div class="row">
+              <div class="col-xs-12">
+                <a class="btn" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <form class="form" ng-submit="vm.create_list(new_list)">
+        <div class="input-group">
+          <input type="text" placeholder="New list" ng-model="new_list" class="form-control">
+          <span class="input-group-btn">
+            <input class="btn btn-default" type="submit" value="Create" />
+          </span>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Store column -->
+  <div class="col-xs-12 col-md-4">
+    <div class="well well-sm">
+
+      <h2>Stores</h2>
+
+      <div class="panel panel-default">
+        <ul class="list-group">
+          <li class="list-group-item" ng-repeat="store in vm.group.data.stores">
+            <div class="row">
+              <div class="col-xs-12">
+                <span>{{ store.label }}</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <form class="form" ng-submit="vm.create_store(new_store)">
+        <div class="input-group">
+          <input type="text" placeholder="New store" ng-model="new_store" class="form-control">
+          <span class="input-group-btn">
+            <input class="btn btn-default" type="submit" value="Create" />
+          </span>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Ingredient column -->
+  <div class="col-xs-12 col-md-4">
+    <div class="well well-sm">
+
+      <h2>Ingredients</h2>
+
+      <div class="panel panel-default">
+        <ul class="list-group">
+          <li class="list-group-item" ng-repeat="ingredient in vm.group.item_completer.ingredients">
+            <div class="row">
+              <div class="col-xs-12">
+                <span>{{ ingredient }}</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
 
 </div>
-</div></div>
