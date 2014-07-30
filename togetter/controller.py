@@ -1,7 +1,8 @@
+from togetter.model import (Group, List, Item, Store, Ordering, Ingredient,
+                            Listener)
+from togetter.util import encode_id, decode_id, normalize
 from google.appengine.ext import ndb
 from google.appengine.api import channel, memcache
-from model import Group, List, Item, Store, Ordering, Ingredient, Listener
-from util import encode_id, decode_id, normalize
 from collections import OrderedDict
 import json
 import datetime

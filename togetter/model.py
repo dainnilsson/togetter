@@ -1,5 +1,5 @@
+from togetter.util import normalize
 from google.appengine.ext import ndb
-from util import normalize
 
 
 class Group(ndb.Model):  # Root entity

@@ -1,4 +1,4 @@
-from controller import clear_stale_listeners
+from togetter.controller import clear_stale_listeners
 import webapp2
 
 

@@ -1,4 +1,4 @@
-from controller import create_group, get_group, EntityNotFoundError
+from togetter.controller import create_group, get_group, EntityNotFoundError
 from google.appengine.api import channel
 import webapp2
 import json

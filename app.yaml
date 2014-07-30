@@ -12,10 +12,10 @@ handlers:
   static_dir: static
 
 - url: /api/.*
-  script: api.application
+  script: togetter.api.application
 
 - url: /cron/.*
-  script: cron.application
+  script: togetter.cron.application
   login: admin
 
 - url: /.*
