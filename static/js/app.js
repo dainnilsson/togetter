@@ -562,7 +562,7 @@
         }
       });
 
-      element.on('$destroy', slip.detach);
+      element.on('$destroy', function() { slip.detach() });
     }
   }
   ngReorderable.$inject = ['$parse'];
