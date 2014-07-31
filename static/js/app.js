@@ -272,7 +272,6 @@
             'label': list_name
           }
         }).then(function(resp) {
-          console.log("created", resp.data.id);
           return that.list(resp.data.id).id;
         });
       }
@@ -447,7 +446,7 @@
   IndexController.$inject = ['$location', '$localStorage'];
   
   app.controller('WelcomeController', WelcomeController);
-  function WelcomeController($location, $http, $localStorage) {
+  function WelcomeController($location, $http, $localStorage, title) {
     var that = this;
     
     that.set_group = set_group;
@@ -470,13 +469,14 @@
   WelcomeController.$inject = ['$location', '$http', '$localStorage', 'title'];
   
   app.controller('GroupController', GroupController);
-  function GroupController($routeParams, $http, $localStorage, $location, groupProvider, title) {
+  function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title) {
     var that = this;
 
     that.groupId = $routeParams.groupId;
     that.group = groupProvider(that.groupId);
 
     that.create_list = create_list;
+    that.configure_store = configure_store;
 
     title.set(that.group.data ? that.group.data.label : 'Group');
     $localStorage.last = $location.path();
@@ -486,8 +486,22 @@
         $location.path('/'+that.groupId+'/'+listId);
       });
     }
+
+    function configure_store(store) {
+      $modal.open({
+        templateUrl: '/static/partials/store.html',
+        controller: 'StoreController as vm',
+        resolve: {
+          groupId: function() { return that.groupId },
+          store: ['$http', function($http) {
+	    return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
+	      .then(function(resp) { return resp.data }, function() {});
+	  }]
+	}
+      });
+    }
   }
-  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', 'groupProvider', 'title'];
+  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title'];
   
   app.controller('ListController', ListController);
   function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider, title) {
@@ -535,12 +549,40 @@
   }
   ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider', 'title'];
   
+  app.controller('StoreController', StoreController);
+  function StoreController($modalInstance, $http, groupId, store_data) {
+    var that = this;
+    console.log("store", store_data);
+    var storeUrl = '/api/'+groupId+'/stores/'+store_data.id+'/';
+
+    that.store = store_data;
+    that.set_label = set_label;
+    that.set_position = set_position;
+    that.set_default = set_default;
+    that.delete_store = delete_store;
+
+    function set_label() {
+      $http.post(storeUrl, undefined, {
+        params: {
+	  'action': 'rename',
+          'label': that.store.label
+	}
+      }).success($modalInstance.$close).error(function() {
+	console.log('Error updating label');
+      });
+    }
+    function set_position(pos) {}
+    function set_default() {}
+    function delete_store() {}
+  }
+  StoreController.$inject = ['$modalInstance', '$http', 'groupId', 'store'];
+
   /*
    * Directives
    */
   
-  app.directive('ngReorderable', ngReorderable);
-  function ngReorderable($parse) {
+  app.directive('reorderable', reorderable);
+  function reorderable($parse) {
     return {
       restrict: 'A',
       link: link
@@ -562,13 +604,17 @@
         }
       });
 
+      element.on('slip:beforeswipe', function(event) {
+        event.preventDefault();
+      });
+
       element.on('$destroy', function() { slip.detach() });
     }
   }
-  ngReorderable.$inject = ['$parse'];
+  reorderable.$inject = ['$parse'];
   
-  app.directive('ngSelectOnFocus', ngSelectOnFocus);
-  function ngSelectOnFocus() {
+  app.directive('selectOnFocus', selectOnFocus);
+  function selectOnFocus() {
     return {
       restrict: 'A',
       link: link
@@ -578,6 +624,14 @@
       element.on('click', element[0].select);
     }
   }
-  ngSelectOnFocus.$inject = [];
+  selectOnFocus.$inject = [];
 
+  app.filter('startFrom', startFrom);
+  function startFrom() {
+    return function(input, start) {
+      start = +start; //parse to int
+      return input.slice(Math.max(0, start));
+    }
+  }
+  startFrom.$inject = [];
 })();

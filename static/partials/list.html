@@ -18,7 +18,7 @@
       <h2>Items</h2>
 
       <form class="form panel panel-default">
-        <ul class="list-group" ng-reorderable on-reorder="vm.move_item($event)">
+        <ul class="list-group" reorderable on-reorder="vm.move_item($event)">
           <li class="list-group-item animate" ng-repeat="item in vm.list.data.items" ng-hide="item.collected">
             <div class="row">
               <div class="col-xs-6 col-sm-8 checkbox">
@@ -34,7 +34,7 @@
                       <span class="glyphicon glyphicon-minus"></span>
                     </button>
                   </span>
-                  <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="vm.update_item(item)" ng-select-on-focus />
+                  <input type="number" class="form-control" min="1" ng-model="item.amount" ng-change="vm.update_item(item)" select-on-focus />
                   <span class="input-group-btn">
                     <button type="button" class="btn btn-default" ng-click="vm.increment_amount(item)">
                       <span class="glyphicon glyphicon-plus"></span>

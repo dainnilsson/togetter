@@ -2,6 +2,10 @@ label.collected {
   text-decoration: line-through;
 }
 
+.pagination {
+  margin: 0;
+}
+
 /*Animate*/
 .animate {
   -webkit-transition: max-height 0.5s ease-in-out;
