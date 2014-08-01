@@ -42,6 +42,11 @@ indexes:
   - name: item
   - name: position
 
+- kind: Ordering
+  ancestor: yes
+  properties:
+  - name: position
+
 - kind: Store
   ancestor: yes
   properties:

@@ -213,17 +213,25 @@ class ListController(BaseController):
 
     @store.setter
     def store(self, store_key):
+        if self.entity.store == store_key:
+            return
+
         self.entity.store = store_key
-        items = Item.query(ancestor=self.key).fetch()
+        items = dict([(item_e.key.id(), item_e) for item_e in
+                      Item.query(ancestor=self.key).fetch()])
         order_keys = [
             ndb.Key(
                 Ordering,
-                x.id(),
-                parent=store_key) for x in items]
+                item_id,
+                parent=store_key) for item_id in items]
         order = ndb.get_multi(order_keys)
-        for item, ordering in zip(items, order):
-            item.position = ordering.position
-        ndb.put_all(items)
+        updated_items = []
+        for ordering in order:
+            item = items[ordering.key.id()]
+            if item and item.position != ordering.position:
+                item.position = ordering.position
+                updated_items.append(item)
+        ndb.put_multi(updated_items)
         self.entity.put()
         memcache.delete(self.id, namespace=self.group.id)
 
@@ -308,6 +316,8 @@ class ListController(BaseController):
             ordering = Ordering.get_by_id(item_id, parent=store)
             ordering.position = item.position
             ordering.put()
+            if next_pos - prev_pos < 5:
+                StoreController(self.group, store).fix_spacing()
         memcache.delete(self.id, namespace=self.group.id)
 
     def clear(self):
@@ -372,11 +382,11 @@ class StoreController(BaseController):
         for i, ordering in enumerate(order):
             ordering.position = MIN_POS + step * (i + 1)
         ndb.put_multi(order)
-        lists = List.query(ancestor=self.group.key) \
-            .filter(List.store == self.key).fetch()
-        if lists:
+        list_keys = List.query(ancestor=self.group.key) \
+            .filter(List.store == self.key).fetch(keys_only=True)
+        if list_keys:
             order_table = dict(map(lambda x: (x.key.id(), x.position), order))
-            for _list in lists:
+            for _list in [ListController(self.group, k) for k in list_keys]:
                 items = Item.query(ancestor=_list.key).fetch()
                 for item in items:
                     item.position = order_table[item.key.id()]
