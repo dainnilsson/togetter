@@ -51,8 +51,10 @@ def clear_stale_listeners():
 
 
 class EntityNotFoundError(Exception):
+
     def __init__(self, key):
-        super(EntityNotFoundError, self).__init__("Entity does not exist: %r" % key)
+        super(EntityNotFoundError, self).__init__(
+            "Entity does not exist: %r" % key)
         self.key = key
 
 
@@ -164,6 +166,54 @@ class GroupController(BaseController):
             memcache.set(INGREDIENT, data, namespace=self.id)
         return data
 
+    def rename_ingredient(self, old_name, new_name):
+        # Update Ingredients
+        old_ingredient = ndb.Key(Ingredient, old_name, parent=self.key).get()
+        if old_ingredient:
+            old_ingredient.key.delete()
+        Ingredient(parent=self.key, id=new_name).put()
+        memcache.delete(INGREDIENT, namespace=self.id)
+
+        # Update Stores
+        store_keys = Store.query(ancestor=self.key).fetch(keys_only=True)
+        order_keys = [ndb.Key(Ordering, old_name, parent=key) for key in
+                      store_keys]
+        old_orderings = [ordering for ordering in ndb.get_multi(order_keys)
+                         if ordering is not None]
+        new_orderings = []
+        for ordering in old_orderings:
+            new_ordering = ndb.Key(Item, new_name,
+                                   parent=ordering.key.parent()).get()
+            if not new_ordering:
+                new_ordering = Ordering(
+                    parent=ordering.key.parent(),
+                    id=new_name)
+                new_ordering.populate(**ordering.to_dict())
+                new_orderings.append(new_ordering)
+        ndb.delete_multi(map(lambda x: x.key, old_orderings))
+        ndb.put_multi(new_orderings)
+
+        # Update Lists
+        list_keys = List.query(ancestor=self.key).fetch(keys_only=True)
+        item_keys = [ndb.Key(Item, old_name, parent=key) for key in list_keys]
+        old_items = [item for item in ndb.get_multi(item_keys)
+                     if item is not None]
+        new_items = []
+        for item in old_items:
+            new_item = ndb.Key(Item, new_name, parent=item.key.parent()).get()
+            if new_item:  # Item already exists for new name, update amount
+                new_item.amount = new_item.amount + item.amount
+            else:  # Item doesn't exist for new name, clone old Item
+                new_item = Item(parent=item.key.parent(), id=new_name)
+                new_item.populate(**item.to_dict())
+            new_items.append(new_item)
+
+            # List was modified, clear cache
+            list_id = ListController(self, item.key.parent()).id
+            memcache.delete(list_id, namespace=self.id)
+        ndb.delete_multi(map(lambda x: x.key, old_items))
+        ndb.put_multi(new_items)
+
     def autocomplete(self, partial):
         q = Ingredient.query(ancestor=self.key)
         if partial:
@@ -205,7 +255,8 @@ class ListController(BaseController):
     @property
     def items(self):
         entities = Item.query(ancestor=self.key).order(Item.position).fetch()
-        return [ItemController(self, entity.key, entity) for entity in entities]
+        return [ItemController(self, entity.key, entity)
+                for entity in entities]
 
     @property
     def store(self):
