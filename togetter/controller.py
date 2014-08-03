@@ -1,6 +1,6 @@
 from togetter.model import (Group, List, Item, Store, Ordering, Ingredient,
                             Listener)
-from togetter.util import encode_id, decode_id, normalize
+from togetter.util import encode_id, decode_id, normalize, memoize
 from google.appengine.ext import ndb
 from google.appengine.api import channel, memcache
 from collections import OrderedDict
@@ -40,6 +40,7 @@ def create_group(name):
     return group
 
 
+@memoize
 def get_group(group_id):
     return GroupController(ndb.Key(Group, decode_id(group_id)))
 
@@ -65,12 +66,12 @@ class BaseController(object):
         self._entity = entity
 
     @property
+    @memoize
     def entity(self):
-        if not self._entity:
-            self._entity = self.key.get()
-            if self._entity is None:
-                raise EntityNotFoundError(self.key)
-        return self._entity
+        entity = self.key.get()
+        if not entity:
+            raise EntityNotFoundError(self.key)
+        return entity
 
     @property
     def id(self):
@@ -97,8 +98,6 @@ class GroupController(BaseController):
 
     def __init__(self, *args):
         super(GroupController, self).__init__(*args)
-        self._lists = {}
-        self._stores = {}
 
     @property
     def default_store(self):
@@ -132,21 +131,15 @@ class GroupController(BaseController):
         })
         return data
 
+    @memoize
     def list(self, list_id):
-        if list_id not in self._lists:
-            _list = ListController(self, ndb.Key(List, decode_id(list_id),
-                                                 parent=self.key))
-            self._lists[list_id] = _list
-            return _list
-        return self._lists[list_id]
+        return ListController(self, ndb.Key(List, decode_id(list_id),
+                                            parent=self.key))
 
+    @memoize
     def store(self, store_id):
-        if store_id not in self._stores:
-            store = StoreController(self, ndb.Key(Store, decode_id(store_id),
-                                                  parent=self.key))
-            self._stores[store_id] = store
-            return store
-        return self._stores[store_id]
+        return StoreController(self, ndb.Key(Store, decode_id(store_id),
+                                             parent=self.key))
 
     def create_list(self, label="My List"):
         _list = List(parent=self.key, label=label,
@@ -165,6 +158,19 @@ class GroupController(BaseController):
             data = [key.id() for key in keys]
             memcache.set(INGREDIENT, data, namespace=self.id)
         return data
+
+    def autocomplete(self, partial):
+        if not partial:
+            return self.ingredients
+        q = Ingredient.query(ancestor=self.key)
+        start = normalize(partial)
+        end = start + u'\ufffd'
+        q = q.filter(Ingredient.words >= start, Ingredient.words < end)
+        return [x.id() for x in q.fetch(10, keys_only=True)]
+
+    def remove_ingredient(self, ingredient):
+        ndb.Key(Ingredient, ingredient, parent=self.key).delete()
+        memcache.delete(INGREDIENT, namespace=self.id)
 
     def rename_ingredient(self, old_name, new_name):
         # Update Ingredients
@@ -202,7 +208,9 @@ class GroupController(BaseController):
         for item in old_items:
             new_item = ndb.Key(Item, new_name, parent=item.key.parent()).get()
             if new_item:  # Item already exists for new name, update amount
-                new_item.amount = new_item.amount + item.amount
+                if not item.collected:
+                    new_item.amount = new_item.amount + item.amount
+                    new_item.collected = False
             else:  # Item doesn't exist for new name, clone old Item
                 new_item = Item(parent=item.key.parent(), id=new_name)
                 new_item.populate(**item.to_dict())
@@ -213,15 +221,6 @@ class GroupController(BaseController):
             memcache.delete(list_id, namespace=self.id)
         ndb.delete_multi(map(lambda x: x.key, old_items))
         ndb.put_multi(new_items)
-
-    def autocomplete(self, partial):
-        q = Ingredient.query(ancestor=self.key)
-        if partial:
-            start = normalize(partial)
-            end = start + u'\ufffd'
-            q = q.filter(Ingredient.words >= start,
-                         Ingredient.words < end)
-        return [x.id() for x in q.fetch(10, keys_only=True)]
 
     def create_listener(self):
         listener = Listener(parent=self.key)
@@ -250,7 +249,6 @@ class ListController(BaseController):
     def __init__(self, group, *args):
         super(ListController, self).__init__(*args)
         self.group = group
-        self._items = {}
 
     @property
     def items(self):
@@ -342,13 +340,9 @@ class ListController(BaseController):
         memcache.delete(self.id, namespace=self.group.id)
         return self.item(item_id)
 
+    @memoize
     def item(self, item_id):
-        if item_id not in self._items:
-            item = ItemController(self, ndb.Key(Item, item_id,
-                                                parent=self.key))
-            self._items[item_id] = item
-            return item
-        return self._items[item_id]
+        return ItemController(self, ndb.Key(Item, item_id, parent=self.key))
 
     def remove_item(self, item_id):
         ndb.Key(Item, item_id, parent=self.key).delete()

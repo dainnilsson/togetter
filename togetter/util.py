@@ -1,4 +1,5 @@
 import string
+from functools import wraps
 
 CHARS = string.uppercase + string.lowercase + string.digits
 CHARS_REV = dict((char, i) for (i, char) in enumerate(CHARS))
@@ -24,3 +25,14 @@ def decode_id(encoded):
         number += digit * (CHARS_BASE ** pos)
         pos += 1
     return number
+
+
+def memoize(func):
+    cache = {}
+
+    @wraps(func)
+    def wrap(*args):
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+    return wrap
