@@ -4,6 +4,10 @@ import webapp2
 import json
 
 
+class InvalidRequestError(Exception):
+    pass
+
+
 class BaseHandler(webapp2.RequestHandler):
     def return_json(self, data):
         self.response.headers['Content-Type'] = 'application/json'
@@ -21,9 +25,9 @@ class GroupHandler(BaseHandler):
         self.return_json(get_group(group_id).data)
 
     def post(self, group_id):
-        group = get_group(group_id)
-        action = self.request.get('action')
         try:
+            group = get_group(group_id)
+            action = self.request.get('action')
             if action == 'create_list':
                 _list = group.create_list(self.request.get('label'))
                 return webapp2.redirect('lists/' + _list.id + '/')
@@ -34,7 +38,9 @@ class GroupHandler(BaseHandler):
                 channel.send_message(self.request.get('token'), 'pong')
             elif action == 'notify':
                 group.notify(self.request.get('token'))
-        except EntityNotFoundError:
+            else:
+                raise InvalidRequestError('Unsupported action: %s' % action)
+        except EntityNotFoundError, InvalidRequestError:
             self.abort(404)
 
 
@@ -53,10 +59,10 @@ class ListHandler(BaseHandler):
         self.return_json(get_group(group_id).list(list_id).data)
 
     def post(self, group_id, list_id):
-        group = get_group(group_id)
-        _list = group.list(list_id)
-        action = self.request.get('action')
         try:
+            group = get_group(group_id)
+            _list = group.list(list_id)
+            action = self.request.get('action')
             if action == 'add':
                 item_id = self.request.get('item')
                 amount = int(self.request.get('amount', '1'))
@@ -78,26 +84,36 @@ class ListHandler(BaseHandler):
                 next_item = self.request.get('next')
                 _list.reorder(item_id, prev_item, next_item)
             else:
-                print "UNKNOWN ACTION: %r" % action
-                return
+                raise InvalidRequestError('Unsupported action: %s' % action)
             # Notify except token
             token = self.request.get('token', None)
             data = json.dumps(_list.data)
             for listener in group.listeners:
                 if listener != token:
                     channel.send_message(listener, data)
-        except EntityNotFoundError:
+        except EntityNotFoundError, InvalidRequestError:
             self.abort(404)
 
 
 class IngredientHandler(BaseHandler):
     def get(self, group_id):
-        result = get_group(group_id).ingredients
+        result = get_group(group_id).autocomplete(self.request.get('query'))
         self.return_json(result)
 
     def post(self, group_id):
-        result = get_group(group_id).autocomplete(self.request.get('query'))
-        self.return_json(result)
+        try:
+            group = get_group(group_id)
+            ingredient = self.request.get('ingredient')
+            action = self.request.get('action')
+            if action == 'delete':
+                group.remove_ingredient(ingredient)
+            elif action == 'rename':
+                new_name = self.request.get('new_name')
+                group.rename_ingredient(ingredient, new_name)
+            else:
+                raise InvalidRequestError('Unsupported action: %s' % action)
+        except EntityNotFoundError, InvalidRequestError:
+            self.abort(404)
 
 
 application = webapp2.WSGIApplication([
