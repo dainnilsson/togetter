@@ -16,16 +16,36 @@
 
       <h2>Lists</h2>
 
-      <pagination class="pagination-sm" ng-model="listPage" total-items="vm.group.data.lists.length" ng-hide="vm.group.data.lists.length <= 10"></pagination>
+      <pagination class="pagination-sm" ng-model="listPage" num-pages="listPages" total-items="vm.group.data.lists.length" ng-hide="listPages <= 1"></pagination>
       <div class="panel panel-default">
         <ul class="list-group">
+
+          <!-- List items -->
           <li class="list-group-item" ng-repeat="list in vm.group.data.lists | startFrom:(listPage-1)*10 | limitTo:10">
             <div class="row">
-              <div class="col-xs-12">
-                <a class="btn" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
+              <div class="col-xs-7">
+                <a class="btn btn-link" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
+              </div>
+	      <div class="col-xs-5 text-right">
+                <button class="btn btn-sm btn-default" ng-click="vm.group.rename_ingredient(ingredient)">
+                  <span class="glyphicon glyphicon-pencil"></span>
+                </button>
+                <button class="btn btn-sm btn-default" ng-click="vm.group.delete_ingredient(ingredient)">
+                  <span class="glyphicon glyphicon-remove"></span>
+                </button>
               </div>
             </div>
           </li>
+	  
+          <!-- Empty placeholders -->
+          <li class="list-group-item" ng-show="listPage == listPages" ng-repeat="x in vm.placeholder | limitTo:10 - (vm.group.data.lists.length % 10)">
+            <div class="row">
+              <div class="col-xs-12">
+	        <span class="btn btn-link" style="visibility: hidden;">&nbsp;</span>
+              </div>
+             </div>
+          </li>
+
         </ul>
       </div>
 
@@ -47,21 +67,36 @@
 
       <h2>Stores</h2>
 
-      <pagination class="pagination-sm" ng-model="storePage" total-items="vm.group.data.stores.length" ng-hide="vm.group.data.stores.length <= 10"></pagination>
+      <pagination class="pagination-sm" ng-model="storePage" num-pages="storePages" total-items="vm.group.data.stores.length" ng-hide="storePages <= 1"></pagination>
       <div class="panel panel-default">
         <ul class="list-group">
+
+          <!-- Store items -->
           <li class="list-group-item" ng-repeat="store in vm.group.data.stores | startFrom:(storePage-1)*10 | limitTo:10">
             <div class="row">
-              <div class="col-xs-10">
-                <span>{{ store.label }}</span>
+              <div class="col-xs-7">
+                <span class="btn btn-link">{{ store.label }}</span>
               </div>
-              <div class="col-xs-2">
-                <button class="btn btn-block btn-xs btn-default" ng-click="vm.configure_store(store)">
+              <div class="col-xs-5 text-right">
+                <button class="btn btn-sm btn-default" ng-click="vm.configure_store(store)">
                   <span class="glyphicon glyphicon-cog"></span>
+                </button>
+                <button class="btn btn-sm btn-default" ng-click="vm.group.delete_ingredient(ingredient)">
+                  <span class="glyphicon glyphicon-remove"></span>
                 </button>
               </div>
             </div>
           </li>
+	  
+          <!-- Empty placeholders -->
+          <li class="list-group-item" ng-show="storePage == storePages" ng-repeat="x in vm.placeholder | limitTo:10 - (vm.group.data.stores.length % 10)">
+            <div class="row">
+              <div class="col-xs-12">
+	        <span class="btn btn-link" style="visibility: hidden;">&nbsp;</span>
+              </div>
+             </div>
+          </li>
+
         </ul>
       </div>
 
@@ -83,24 +118,37 @@
 
       <h2>Ingredients</h2>
 
-      <pagination class="pagination-sm" ng-model="ingredientPage" total-items="vm.group.item_completer.ingredients.length" ng-hide="vm.group.item_completer.ingredients.length <= 10"></pagination>
+      <pagination class="pagination-sm" ng-model="ingredientPage" num-pages="ingredientPages" total-items="vm.group.item_completer.ingredients.length" ng-hide="ingredientPages <= 1"></pagination>
       <div class="panel panel-default">
         <ul class="list-group">
+
+          <!-- Ingredient items -->
           <li class="list-group-item" ng-repeat="ingredient in vm.group.item_completer.ingredients | startFrom:(ingredientPage-1)*10 | limitTo:10">
             <div class="row">
-              <div class="col-xs-10">
-                <span>{{ ingredient }}</span>
+              <div class="col-xs-7">
+                <span class="btn btn-link" editable-text="ingredient">{{ ingredient }}</span>
               </div>
-              <div class="col-xs-2">
-                <button class="btn btn-block btn-xs btn-default" ng-click="vm.group.delete_ingredient(ingredient)">
+	      <div class="col-xs-5 text-right">
+                <button class="btn btn-sm btn-default" ng-click="vm.group.rename_ingredient(ingredient)">
+                  <span class="glyphicon glyphicon-pencil"></span>
+                </button>
+                <button class="btn btn-sm btn-default" ng-click="vm.group.delete_ingredient(ingredient)">
                   <span class="glyphicon glyphicon-remove"></span>
                 </button>
               </div>
             </div>
           </li>
+
+          <!-- Empty placeholders -->
+          <li class="list-group-item" ng-show="ingredientPage == ingredientPages" ng-repeat="x in vm.placeholder | limitTo:10 - (vm.group.item_completer.ingredients.length % 10)">
+            <div class="row">
+              <div class="col-xs-12">
+	        <span class="btn btn-link" style="visibility: hidden;">&nbsp;</span>
+              </div>
+             </div>
+          </li>
         </ul>
       </div>
-
 
     </div>
   </div>

@@ -5,7 +5,7 @@
    * Module
    */
   
-  var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap', 'ngAnimate']);
+  var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap', 'xeditable', 'ngAnimate']);
   
   /*
    * Configuration
@@ -32,6 +32,17 @@
     });
   }
   config.$inject = ['$routeProvider', '$locationProvider'];
+
+  app.run(run);
+  function run(editableOptions, editableThemes) {
+    editableOptions.theme = 'bs3';
+    editableOptions.activate = 'select';
+    editableOptions.buttons = 'no';
+
+    editableThemes.bs3.inputClass = 'input-xs';
+    editableThemes.bs3.buttonsClass = 'btn-xs';
+  }
+  run.$inject = ['editableOptions', 'editableThemes'];
   
   /*
    * Services
@@ -474,6 +485,7 @@
 
     that.groupId = $routeParams.groupId;
     that.group = groupProvider(that.groupId);
+    that.placeholder = [0,1,2,3,4,5,6,7,8,9];
 
     that.create_list = create_list;
     that.configure_store = configure_store;
