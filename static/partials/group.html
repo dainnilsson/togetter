@@ -122,18 +122,18 @@
 
       <h2>Ingredients</h2>
 
-      <pagination class="pagination-sm" ng-model="ingredientPage" num-pages="ingredientPages" total-items="vm.group.item_completer.ingredients.length" ng-hide="ingredientPages <= 1"></pagination>
+      <pagination class="pagination-sm" ng-model="ingredientPage" num-pages="ingredientPages" total-items="vm.group.ingredients.completer.ingredients.length" ng-hide="ingredientPages <= 1"></pagination>
       <div class="panel panel-default">
         <ul class="list-group">
 
           <!-- Ingredient items -->
-          <li class="list-group-item" ng-repeat="ingredient in vm.group.item_completer.ingredients | startFrom:(ingredientPage-1)*10 | limitTo:10">
+          <li class="list-group-item" ng-repeat="ingredient in vm.group.ingredients.completer.ingredients | startFrom:(ingredientPage-1)*10 | limitTo:10">
             <div class="row">
               <div class="col-xs-7">
-                <span class="btn btn-link" editable-text="ingredient">{{ ingredient }}</span>
+                <span class="btn btn-link">{{ ingredient }}</span>
               </div>
 	      <div class="col-xs-5 text-right">
-                <button class="btn btn-sm btn-default" ng-click="vm.group.rename_ingredient(ingredient)">
+                <button class="btn btn-sm btn-default" ng-click="vm.rename_ingredient(ingredient)">
                   <span class="glyphicon glyphicon-pencil"></span>
                 </button>
                 <button class="btn btn-sm btn-default" ng-click="vm.group.delete_ingredient(ingredient)">
@@ -144,7 +144,7 @@
           </li>
 
           <!-- Empty placeholders -->
-          <li class="list-group-item" ng-show="ingredientPage == ingredientPages" ng-repeat="x in vm.placeholder | limitTo:10 - (vm.group.item_completer.ingredients.length % 10)">
+          <li class="list-group-item" ng-show="ingredientPage == ingredientPages" ng-repeat="x in vm.placeholder | limitTo:10 - (vm.group.ingredients.completer.ingredients.length % 10)">
             <div class="row">
               <div class="col-xs-12">
 	        <span class="btn btn-link" style="visibility: hidden;">&nbsp;</span>

@@ -9,6 +9,7 @@
   'ngRoute', 'ngStorage', 'ui.bootstrap', 'xeditable', 'ngAnimate']);
   
   module.config(config);
+  config.$inject = ['$routeProvider', '$locationProvider'];
   function config($routeProvider, $locationProvider) {
     $locationProvider.html5Mode(true);
   
@@ -28,9 +29,9 @@
       controllerAs: 'vm'
     });
   }
-  config.$inject = ['$routeProvider', '$locationProvider'];
 
   module.run(run);
+  run.$inject = ['editableOptions', 'editableThemes'];
   function run(editableOptions, editableThemes) {
     editableOptions.theme = 'bs3';
     editableOptions.activate = 'select';
@@ -39,7 +40,6 @@
     editableThemes.bs3.inputClass = 'input-xs';
     editableThemes.bs3.buttonsClass = 'btn-xs';
   }
-  run.$inject = ['editableOptions', 'editableThemes'];
   
   /*
    * Services
@@ -47,6 +47,7 @@
 
   var services = angular.module('services', ['directives']);
   services.factory('title', title);
+  title.$inject = ['$rootScope'];
   function title($rootScope) {
     return {
       get: get,
@@ -61,15 +62,15 @@
       $rootScope.title = title_value;
     }
   }
-  title.$inject = ['$rootScope'];
   
   services.factory('IndexRedirector', IndexRedirector);
+  IndexRedirector.$inject = ['$location', '$localStorage'];
   function IndexRedirector($location, $localStorage) {
     $location.path($localStorage.last || '/welcome');
   }
-  IndexRedirector.$inject = ['$location', '$localStorage'];
   
   services.factory('activityMonitor', activityMonitor);
+  activityMonitor.$inject = ['$window', '$document', '$rootScope'];
   function activityMonitor($window, $document, $rootScope) {
     var mon = {
       latest: Date.now(),
@@ -92,9 +93,9 @@
       mon.latest = now;
     }
   }
-  activityMonitor.$inject = ['$window', '$document', '$rootScope'];
   
   services.factory('Channel', Channel);
+  Channel.$inject = ['$rootScope', '$localStorage', '$http', '$timeout', 'activityMonitor'];
   function Channel($rootScope, $localStorage, $http, $timeout, activityMonitor) {
     return function(groupId, connected, onmessage) {
       var that = this;
@@ -174,7 +175,6 @@
       }
     };
   }
-  Channel.$inject = ['$rootScope', '$localStorage', '$http', '$timeout', 'activityMonitor'];
   
   services.factory('ItemCompleter', ItemCompleter);
   ItemCompleter.$inject = ['$http'];
@@ -184,11 +184,11 @@
 
       that.ingredients = [];
 
-      that.refresh = refresh;
       that.add_ingredient = add_ingredient;
+      that.remove_ingredient = remove_ingredient;
       that.filter = filter;
       
-      that.refresh();
+      refresh();
 
       function refresh() {
         $http.get('/api/'+groupId+'/ingredients/').success(function(res) {
@@ -197,8 +197,15 @@
       }
     
       function add_ingredient(ingredient) {
-        this.ingredients.push(ingredient);
-        this.ingredients.sort();
+        that.ingredients.push(ingredient);
+        that.ingredients.sort();
+      }
+
+      function remove_ingredient(ingredient) {
+        var index = that.ingredients.indexOf(ingredient);
+	if(index != -1) {
+	  that.ingredients.splice(index, 1);
+	}
       }
   
       function filter(partial) {
@@ -210,7 +217,7 @@
           var ingredient = that.ingredients[i];
           if(partial == ingredient) {
             exact = true;
-    matches.push(ingredient);
+            matches.push(ingredient);
             continue;
           }
           var words = ingredient.split(' ');
@@ -229,16 +236,53 @@
       }
     };
   }
-  
+
+  services.factory('IngredientApi', IngredientApi);
+  IngredientApi.$inject = ['$http', 'ItemCompleter'];
+  function IngredientApi($http, ItemCompleter) {
+    return function(groupId) {
+      var that = this;
+      var ingredientUrl = '/api/'+groupId+'/ingredients/';
+
+      that.completer = new ItemCompleter(groupId);
+
+      that.rename = rename_ingredient;
+      that.delete = delete_ingredient;
+
+      function rename_ingredient(old_name, new_name) {
+        return $http.post(ingredientUrl, null, {
+          params: {
+            'action': 'rename',
+            'ingredient': old_name,
+            'new_name': new_name
+          }
+        }).success(function() {
+          that.completer.remove_ingredient(old_name);
+          that.completer.add_ingredient(new_name);
+	});
+      }
+
+      function delete_ingredient(name) {
+        return $http.post(ingredientUrl, null, {
+          params: {
+            'action': 'delete',
+            'ingredient': name
+          }
+        });
+      }
+    }
+  }
+
   services.factory('GroupApi', GroupApi);
-  function GroupApi($localStorage, $http, ListApi, Channel, ItemCompleter) {
+  GroupApi.$inject = ['$localStorage', '$http', 'ListApi', 'Channel', 'IngredientApi'];
+  function GroupApi($localStorage, $http, ListApi, Channel, IngredientApi) {
     return function(groupId) {
       var that = this;
       var groupUrl = '/api/'+groupId+'/';
       
       that._lists = {};
       that.id = groupId;
-      that.item_completer = new ItemCompleter(groupId);
+      that.ingredients = new IngredientApi(groupId);
       that.channel = new Channel(groupId, on_connect, on_message);
 
       that.set_data = set_data;
@@ -309,16 +353,16 @@
         that.list(list_data.id).set_data(list_data);
         for(var i=0; i<list_data.items.length; i++) {
           var item = list_data.items[i];
-          if(that.item_completer.ingredients.indexOf(item.item) == -1) {
-            that.item_completer.add_ingredient(item.item);
+          if(that.ingredients.completer.ingredients.indexOf(item.item) == -1) {
+            that.ingredients.completer.add_ingredient(item.item);
           }
         }
       }
     };
   }
-  GroupApi.$inject = ['$localStorage', '$http', 'ListApi', 'Channel', 'ItemCompleter'];
   
   services.factory('groupProvider', groupProvider);
+  groupProvider.$inject = ['$rootScope', 'GroupApi'];
   function groupProvider($rootScope, GroupApi) {
     return function(groupId) {
       if($rootScope.group_api) {
@@ -331,9 +375,9 @@
       return $rootScope.group_api;
     }
   }
-  groupProvider.$inject = ['$rootScope', 'GroupApi'];
   
   services.factory('ListApi', ListApi);
+  ListApi.$inject = ['$http', '$localStorage'];
   function ListApi($http, $localStorage) {
     return function(group_api, listId) {
       var that = this;
@@ -385,7 +429,7 @@
             'token': group_api.channel.client_id
           }
         }).success(function() {
-          group_api.item_completer.add_ingredient(item);
+          group_api.ingredients.completer.add_ingredient(item);
           that.refresh();
         });
       }
@@ -442,7 +486,6 @@
       }
     };
   }
-  ListApi.$inject = ['$http', '$localStorage'];
   
   /*
    * Controllers
@@ -450,12 +493,13 @@
   
   var controllers = angular.module('controllers', ['services']);
   controllers.controller('IndexController', IndexController);
+  IndexController.$inject = ['$location', '$localStorage'];
   function IndexController($location, $localStorage) {
     $location.path($localStorage.last || '/welcome');
   }
-  IndexController.$inject = ['$location', '$localStorage'];
   
   controllers.controller('WelcomeController', WelcomeController);
+  WelcomeController.$inject = ['$location', '$http', '$localStorage', 'title'];
   function WelcomeController($location, $http, $localStorage, title) {
     var that = this;
     
@@ -476,9 +520,9 @@
       });
     }
   }
-  WelcomeController.$inject = ['$location', '$http', '$localStorage', 'title'];
   
   controllers.controller('GroupController', GroupController);
+  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title'];
   function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title) {
     var that = this;
 
@@ -488,6 +532,7 @@
 
     that.create_list = create_list;
     that.configure_store = configure_store;
+    that.rename_ingredient = rename_ingredient;
 
     title.set(that.group.data ? that.group.data.label : 'Group');
     $localStorage.last = $location.path();
@@ -505,16 +550,32 @@
         resolve: {
           groupId: function() { return that.groupId },
           store: ['$http', function($http) {
-    return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
-      .then(function(resp) { return resp.data }, function() {});
-  }]
-}
+            return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
+              .then(function(resp) { return resp.data }, function() {});
+          }]
+        }
       });
     }
+
+    function rename_ingredient(ingredient) {
+      $modal.open({
+        templateUrl: '/static/partials/dialog-rename.html',
+        controller: 'RenameController as vm',
+        resolve: {
+          name: function() { return ingredient }
+        }
+      }).result.then(function(name) {
+        console.log('rename', ingredient, name);
+	that.group.ingredients.rename(ingredient, name);
+      }, function(reason) {
+        console.log('cancelled', reason);
+      });
+    }
+
   }
-  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title'];
   
   controllers.controller('ListController', ListController);
+  ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider', 'title'];
   function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider, title) {
     var that = this;
   
@@ -523,7 +584,7 @@
     that.group = groupProvider(that.groupId);
     that.list = that.group.list(that.listId);
 
-    that.filter_items = that.group.item_completer.filter;
+    that.filter_items = that.group.ingredients.completer.filter;
     that.add_item = add_item;
     that.move_item = move_item;
     that.update_item = that.list.update_item;
@@ -558,9 +619,9 @@
       that.list.move_item(e.detail.originalIndex, e.detail.spliceIndex);
     }
   }
-  ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider', 'title'];
   
   controllers.controller('StoreController', StoreController);
+  StoreController.$inject = ['$modalInstance', '$http', 'groupId', 'store'];
   function StoreController($modalInstance, $http, groupId, store_data) {
     var that = this;
     console.log("store", store_data);
@@ -586,7 +647,24 @@ console.log('Error updating label');
     function set_default() {}
     function delete_store() {}
   }
-  StoreController.$inject = ['$modalInstance', '$http', 'groupId', 'store'];
+
+  controllers.controller('RenameController', RenameController);
+  RenameController.$inject = ['$modalInstance', 'name'];
+  function RenameController($modalInstance, name) {
+    var that = this;
+
+    that.name = name;
+    that.save_name = save_name;
+    that.dismiss = $modalInstance.dismiss;
+
+    function save_name() {
+      if(that.name != name) {
+        $modalInstance.close(that.name);
+      } else {
+        $modalInstance.dismiss('Name unchanged');
+      }
+    }
+  }
 
   /*
    * Directives
@@ -594,6 +672,7 @@ console.log('Error updating label');
   
   var directives = angular.module('directives', ['filters', 'ui.bootstrap']);
   directives.directive('reorderable', reorderable);
+  reorderable.$inject = ['$parse'];
   function reorderable($parse) {
     return {
       restrict: 'A',
@@ -623,9 +702,9 @@ console.log('Error updating label');
       element.on('$destroy', function() { slip.detach() });
     }
   }
-  reorderable.$inject = ['$parse'];
   
   directives.directive('selectOnFocus', selectOnFocus);
+  selectOnFocus.$inject = [];
   function selectOnFocus() {
     return {
       restrict: 'A',
@@ -636,9 +715,9 @@ console.log('Error updating label');
       element.on('click', element[0].select);
     }
   }
-  selectOnFocus.$inject = [];
 
   directives.directive('pagelist', pagelist);
+  pagelist.$inject = ['startFromFilter'];
   function pagelist(startFrom) {
     return {
       restrict: 'E',
@@ -652,7 +731,6 @@ console.log('Error updating label');
       }
     }
   }
-  pagelist.$inject = ['startFromFilter'];
 
   /*
    * Filters
@@ -660,11 +738,11 @@ console.log('Error updating label');
 
   var filters = angular.module('filters', []);
   filters.filter('startFrom', startFrom);
+  startFrom.$inject = [];
   function startFrom() {
     return function(input, start) {
       start = +start; //parse to int
       return input.slice(Math.max(0, start));
     }
   }
-  startFrom.$inject = [];
 })();
