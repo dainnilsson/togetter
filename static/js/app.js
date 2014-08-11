@@ -5,13 +5,10 @@
    * Module
    */
   
-  var app = angular.module('togetter', ['ngRoute', 'ngStorage', 'ui.bootstrap', 'xeditable', 'ngAnimate']);
+  var module = angular.module('togetter', ['services', 'controllers', 'directives', 'filters',
+  'ngRoute', 'ngStorage', 'ui.bootstrap', 'xeditable', 'ngAnimate']);
   
-  /*
-   * Configuration
-   */
-  
-  app.config(config);
+  module.config(config);
   function config($routeProvider, $locationProvider) {
     $locationProvider.html5Mode(true);
   
@@ -33,7 +30,7 @@
   }
   config.$inject = ['$routeProvider', '$locationProvider'];
 
-  app.run(run);
+  module.run(run);
   function run(editableOptions, editableThemes) {
     editableOptions.theme = 'bs3';
     editableOptions.activate = 'select';
@@ -48,7 +45,8 @@
    * Services
    */
 
-  app.factory('title', title);
+  var services = angular.module('services', ['directives']);
+  services.factory('title', title);
   function title($rootScope) {
     return {
       get: get,
@@ -65,13 +63,13 @@
   }
   title.$inject = ['$rootScope'];
   
-  app.factory('IndexRedirector', IndexRedirector);
+  services.factory('IndexRedirector', IndexRedirector);
   function IndexRedirector($location, $localStorage) {
     $location.path($localStorage.last || '/welcome');
   }
   IndexRedirector.$inject = ['$location', '$localStorage'];
   
-  app.factory('activityMonitor', activityMonitor);
+  services.factory('activityMonitor', activityMonitor);
   function activityMonitor($window, $document, $rootScope) {
     var mon = {
       latest: Date.now(),
@@ -96,7 +94,7 @@
   }
   activityMonitor.$inject = ['$window', '$document', '$rootScope'];
   
-  app.factory('Channel', Channel);
+  services.factory('Channel', Channel);
   function Channel($rootScope, $localStorage, $http, $timeout, activityMonitor) {
     return function(groupId, connected, onmessage) {
       var that = this;
@@ -178,7 +176,7 @@
   }
   Channel.$inject = ['$rootScope', '$localStorage', '$http', '$timeout', 'activityMonitor'];
   
-  app.factory('ItemCompleter', ItemCompleter);
+  services.factory('ItemCompleter', ItemCompleter);
   ItemCompleter.$inject = ['$http'];
   function ItemCompleter($http) {
     return function(groupId) {
@@ -212,7 +210,7 @@
           var ingredient = that.ingredients[i];
           if(partial == ingredient) {
             exact = true;
-  	  matches.push(ingredient);
+    matches.push(ingredient);
             continue;
           }
           var words = ingredient.split(' ');
@@ -232,7 +230,7 @@
     };
   }
   
-  app.factory('GroupApi', GroupApi);
+  services.factory('GroupApi', GroupApi);
   function GroupApi($localStorage, $http, ListApi, Channel, ItemCompleter) {
     return function(groupId) {
       var that = this;
@@ -320,7 +318,7 @@
   }
   GroupApi.$inject = ['$localStorage', '$http', 'ListApi', 'Channel', 'ItemCompleter'];
   
-  app.factory('groupProvider', groupProvider);
+  services.factory('groupProvider', groupProvider);
   function groupProvider($rootScope, GroupApi) {
     return function(groupId) {
       if($rootScope.group_api) {
@@ -335,7 +333,7 @@
   }
   groupProvider.$inject = ['$rootScope', 'GroupApi'];
   
-  app.factory('ListApi', ListApi);
+  services.factory('ListApi', ListApi);
   function ListApi($http, $localStorage) {
     return function(group_api, listId) {
       var that = this;
@@ -450,13 +448,14 @@
    * Controllers
    */
   
-  app.controller('IndexController', IndexController);
+  var controllers = angular.module('controllers', ['services']);
+  controllers.controller('IndexController', IndexController);
   function IndexController($location, $localStorage) {
     $location.path($localStorage.last || '/welcome');
   }
   IndexController.$inject = ['$location', '$localStorage'];
   
-  app.controller('WelcomeController', WelcomeController);
+  controllers.controller('WelcomeController', WelcomeController);
   function WelcomeController($location, $http, $localStorage, title) {
     var that = this;
     
@@ -479,7 +478,7 @@
   }
   WelcomeController.$inject = ['$location', '$http', '$localStorage', 'title'];
   
-  app.controller('GroupController', GroupController);
+  controllers.controller('GroupController', GroupController);
   function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title) {
     var that = this;
 
@@ -506,16 +505,16 @@
         resolve: {
           groupId: function() { return that.groupId },
           store: ['$http', function($http) {
-	    return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
-	      .then(function(resp) { return resp.data }, function() {});
-	  }]
-	}
+    return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
+      .then(function(resp) { return resp.data }, function() {});
+  }]
+}
       });
     }
   }
   GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title'];
   
-  app.controller('ListController', ListController);
+  controllers.controller('ListController', ListController);
   function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider, title) {
     var that = this;
   
@@ -561,7 +560,7 @@
   }
   ListController.$inject = ['$scope', '$routeParams', '$http', '$location', '$localStorage', 'groupProvider', 'title'];
   
-  app.controller('StoreController', StoreController);
+  controllers.controller('StoreController', StoreController);
   function StoreController($modalInstance, $http, groupId, store_data) {
     var that = this;
     console.log("store", store_data);
@@ -576,11 +575,11 @@
     function set_label() {
       $http.post(storeUrl, undefined, {
         params: {
-	  'action': 'rename',
+  'action': 'rename',
           'label': that.store.label
-	}
+}
       }).success($modalInstance.$close).error(function() {
-	console.log('Error updating label');
+console.log('Error updating label');
       });
     }
     function set_position(pos) {}
@@ -593,7 +592,8 @@
    * Directives
    */
   
-  app.directive('reorderable', reorderable);
+  var directives = angular.module('directives', ['filters', 'ui.bootstrap']);
+  directives.directive('reorderable', reorderable);
   function reorderable($parse) {
     return {
       restrict: 'A',
@@ -625,7 +625,7 @@
   }
   reorderable.$inject = ['$parse'];
   
-  app.directive('selectOnFocus', selectOnFocus);
+  directives.directive('selectOnFocus', selectOnFocus);
   function selectOnFocus() {
     return {
       restrict: 'A',
@@ -638,7 +638,28 @@
   }
   selectOnFocus.$inject = [];
 
-  app.filter('startFrom', startFrom);
+  directives.directive('pagelist', pagelist);
+  function pagelist(startFrom) {
+    return {
+      restrict: 'E',
+      templateUrl: '/static/partials/pagelist.html',
+      transclude: 'element',
+      replace: true,
+      require: ['pagelist', '?ngModel'],
+      scope: {
+        model: '=ngModel',
+        padding: '@padding'
+      }
+    }
+  }
+  pagelist.$inject = ['startFromFilter'];
+
+  /*
+   * Filters
+   */
+
+  var filters = angular.module('filters', []);
+  filters.filter('startFrom', startFrom);
   function startFrom() {
     return function(input, start) {
       start = +start; //parse to int
