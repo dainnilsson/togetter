@@ -1,3 +1,8 @@
 <form ng-submit="vm.save_name()">
-  <input type="name" ng-model="vm.name" />
+  <div class="form-group">
+    <label for="name">Name</label>
+    <input id="name" type="name" class="form-control" ng-model="vm.name" autoselect />
+  </div>
+  <input type="submit" class="btn btn-primary" value="Rename" />
+  <a class="btn btn-danger" ng-click="vm.dismiss('User cancelled')">Cancel</a>
 </form>

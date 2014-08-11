@@ -10,6 +10,10 @@ label.collected {
   margin: 2px 0;
 }
 
+.modal-content {
+  padding: 1em;
+}
+
 .editable-click {
   border-color: transparent !important;
 }

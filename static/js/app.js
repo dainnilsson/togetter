@@ -203,9 +203,9 @@
 
       function remove_ingredient(ingredient) {
         var index = that.ingredients.indexOf(ingredient);
-	if(index != -1) {
-	  that.ingredients.splice(index, 1);
-	}
+        if(index != -1) {
+          that.ingredients.splice(index, 1);
+        }
       }
   
       function filter(partial) {
@@ -256,10 +256,11 @@
             'ingredient': old_name,
             'new_name': new_name
           }
-        }).success(function() {
+        }).then(function(resp) {
           that.completer.remove_ingredient(old_name);
           that.completer.add_ingredient(new_name);
-	});
+          return resp;
+        });
       }
 
       function delete_ingredient(name) {
@@ -551,7 +552,7 @@
           groupId: function() { return that.groupId },
           store: ['$http', function($http) {
             return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
-              .then(function(resp) { return resp.data }, function() {});
+              .then(function(resp) { return resp.data });
           }]
         }
       });
@@ -565,8 +566,7 @@
           name: function() { return ingredient }
         }
       }).result.then(function(name) {
-        console.log('rename', ingredient, name);
-	that.group.ingredients.rename(ingredient, name);
+        that.group.ingredients.rename(ingredient, name);
       }, function(reason) {
         console.log('cancelled', reason);
       });
@@ -713,6 +713,19 @@ console.log('Error updating label');
 
     function link(scope, element, attrs) {
       element.on('click', element[0].select);
+    }
+  }
+
+  directives.directive('autoselect', autoselect);
+  autoselect.$inject = ['$timeout'];
+  function autoselect($timeout) {
+    return {
+      restrict: 'A',
+      link: link
+    }
+
+    function link(scope, element, attrs) {
+      $timeout(function() { element[0].select() }, 100);
     }
   }
 
