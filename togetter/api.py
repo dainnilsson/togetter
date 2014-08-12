@@ -63,7 +63,9 @@ class ListHandler(BaseHandler):
             group = get_group(group_id)
             _list = group.list(list_id)
             action = self.request.get('action')
-            if action == 'add':
+            if action == 'rename':
+                _list.label = self.request.get('new_name')
+            elif action == 'add':
                 item_id = self.request.get('item')
                 amount = int(self.request.get('amount', '1'))
                 _list.add_item(item_id, amount)

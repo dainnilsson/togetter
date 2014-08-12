@@ -31,7 +31,7 @@
                 <a class="btn btn-link" href="/{{ vm.groupId }}/{{ list.id }}">{{ list.label }}</a>
               </div>
 	      <div class="col-xs-5 text-right">
-                <button class="btn btn-sm btn-default" ng-click="vm.group.rename_ingredient(ingredient)">
+                <button class="btn btn-sm btn-default" ng-click="vm.rename_list(list.id)">
                   <span class="glyphicon glyphicon-pencil"></span>
                 </button>
                 <button class="btn btn-sm btn-default" ng-click="vm.group.delete_ingredient(ingredient)">

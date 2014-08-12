@@ -292,6 +292,7 @@
       that.refresh = refresh;
       that.revert_and_refresh = revert_and_refresh;
       that.create_list = create_list;
+      that.rename_list = rename_list;
       that.list = list;
       that.destroy = destroy;
   
@@ -328,6 +329,18 @@
         }).then(function(resp) {
           return that.list(resp.data.id).id;
         });
+      }
+
+      function rename_list(listId, new_name) {
+        return that.list(listId).rename(new_name).then(function() {
+	  for(var i=0; i<that.data.lists.length; i++) {
+            if(that.data.lists[i].id == listId) {
+	      that.data.lists[i].label = new_name;
+	      that.commit();
+	      break;
+	    }
+	  }
+	});
       }
   
       function list(listId) {
@@ -392,6 +405,7 @@
       that.revert = revert;
       that.refresh = refresh;
       that.revert_and_refresh = revert_and_refresh;
+      that.rename = rename;
       that.add_item = add_item;
       that.update_item = update_item;
       that.move_item = move_item;
@@ -420,6 +434,18 @@
       function revert_and_refresh() {
         that.revert();
         that.refresh();
+      }
+
+      function rename(new_name) {
+        return $http.post(listUrl, null, {
+          params: {
+            'action': 'rename',
+            'new_name': new_name
+	  }
+	}).success(function() {
+	  that.data.label = new_name;
+	  that.commit();
+	});
       }
   
       function add_item(item) {
@@ -533,6 +559,7 @@
 
     that.create_list = create_list;
     that.configure_store = configure_store;
+    that.rename_list = rename_list;
     that.rename_ingredient = rename_ingredient;
 
     title.set(that.group.data ? that.group.data.label : 'Group');
@@ -558,12 +585,29 @@
       });
     }
 
+    function rename_list(listId) {
+      var list = that.group.list(listId).data.label;
+      $modal.open({
+        templateUrl: '/static/partials/dialog-rename.html',
+        controller: 'RenameController as vm',
+        resolve: {
+          name: function() { return list},
+          title: function() { return 'List: '+list}
+        }
+      }).result.then(function(name) {
+        that.group.rename_list(listId, name);
+      }, function(reason) {
+        console.log('cancelled', reason);
+      });
+    }
+
     function rename_ingredient(ingredient) {
       $modal.open({
         templateUrl: '/static/partials/dialog-rename.html',
         controller: 'RenameController as vm',
         resolve: {
-          name: function() { return ingredient }
+          name: function() { return ingredient },
+          title: function() { return 'Ingredient: '+ingredient }
         }
       }).result.then(function(name) {
         that.group.ingredients.rename(ingredient, name);
@@ -649,10 +693,11 @@ console.log('Error updating label');
   }
 
   controllers.controller('RenameController', RenameController);
-  RenameController.$inject = ['$modalInstance', 'name'];
-  function RenameController($modalInstance, name) {
+  RenameController.$inject = ['$modalInstance', 'name', 'title'];
+  function RenameController($modalInstance, name, title) {
     var that = this;
 
+    that.title = title;
     that.name = name;
     that.save_name = save_name;
     that.dismiss = $modalInstance.dismiss;

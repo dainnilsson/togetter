@@ -250,6 +250,11 @@ class ListController(BaseController):
         super(ListController, self).__init__(*args)
         self.group = group
 
+    @BaseController.label.setter
+    def label(self, value):
+        BaseController.label.fset(self, value)
+        memcache.delete(self.id, namespace=self.group.id)
+
     @property
     def items(self):
         entities = Item.query(ancestor=self.key).order(Item.position).fetch()
