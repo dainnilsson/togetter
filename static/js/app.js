@@ -790,6 +790,22 @@ console.log('Error updating label');
     }
   }
 
+  directives.directive('scrollTo', scrollTo);
+  scrollTo.$inject = ['$anchorScroll', '$location'];
+  function scrollTo($anchorScroll, $location) {
+    return {
+      restrict: 'A',
+      link: link
+    }
+
+    function link(scope, element, attrs) {
+      element.on('focus', function() {
+        $location.hash(attrs.scrollTo);
+        $anchorScroll();
+      });
+    }
+  }
+
   /*
    * Filters
    */

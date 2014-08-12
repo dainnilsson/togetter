@@ -50,7 +50,7 @@
 
       <form class="form" ng-submit="vm.add_item(vm.new_item)">
         <div class="input-group">
-          <input type="text" autocapitalize="off" placeholder="Add item..." ng-model="vm.new_item" typeahead="item for item in vm.filter_items($viewValue)" typeahead-on-select="vm.add_item(vm.new_item)" class="form-control">
+          <input id="new_item" type="text" scroll-to="new_item" autocapitalize="off" placeholder="Add item..." ng-model="vm.new_item" typeahead="item for item in vm.filter_items($viewValue)" typeahead-on-select="vm.add_item(vm.new_item)" class="form-control">
           <span class="input-group-btn">
             <input class="btn btn-default" type="submit" value="Add" />
           </span>
@@ -89,3 +89,6 @@
   </div>
 
 </div>
+
+<!-- Minimum padding on bottom -->
+<div style="height: 300px" />
