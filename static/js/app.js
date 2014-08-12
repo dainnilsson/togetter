@@ -19,11 +19,11 @@
       templateUrl: '/static/partials/welcome.html',
       controller: 'WelcomeController',
       controllerAs: 'vm'
-    }).when('/:groupId', {
+    }).when('/:group_id', {
       templateUrl: '/static/partials/group.html',
       controller: 'GroupController',
       controllerAs: 'vm'
-    }).when('/:groupId/:listId', {
+    }).when('/:group_id/:list_id', {
       templateUrl: '/static/partials/list.html',
       controller: 'ListController',
       controllerAs: 'vm'
@@ -97,9 +97,9 @@
   services.factory('Channel', Channel);
   Channel.$inject = ['$rootScope', '$localStorage', '$http', '$timeout', 'activityMonitor'];
   function Channel($rootScope, $localStorage, $http, $timeout, activityMonitor) {
-    return function(groupId, connected, onmessage) {
+    return function(group_id, connected, onmessage) {
       var that = this;
-      var storageKey = 'channel-'+groupId;
+      var storageKey = 'channel-'+group_id;
       
       that.close = close;
       that.reconnect = reconnect;
@@ -120,7 +120,7 @@
   
       function reconnect() {
         if(!$localStorage[storageKey]) {
-          $http.post('/api/'+groupId+'/', null, {
+          $http.post('/api/'+group_id+'/', null, {
             params: {'action': 'create_channel'}
           }).success(function(res) {
             $localStorage[storageKey] = {'token': res.token, 'client_id': res.client_id};
@@ -162,7 +162,7 @@
       }
   
       function ping() {
-        $http.post('/api/'+groupId+'/', null, {
+        $http.post('/api/'+group_id+'/', null, {
           params: {'action': 'ping_channel', 'token': that.client_id}
         }).success(function() {
           that.timeout = $timeout(that.reconnect, 5000, true);
@@ -179,7 +179,7 @@
   services.factory('ItemCompleter', ItemCompleter);
   ItemCompleter.$inject = ['$http'];
   function ItemCompleter($http) {
-    return function(groupId) {
+    return function(group_id) {
       var that = this;
 
       that.ingredients = [];
@@ -191,7 +191,7 @@
       refresh();
 
       function refresh() {
-        $http.get('/api/'+groupId+'/ingredients/').success(function(res) {
+        $http.get('/api/'+group_id+'/ingredients/').success(function(res) {
           that.ingredients = res;
         });
       }
@@ -240,11 +240,11 @@
   services.factory('IngredientApi', IngredientApi);
   IngredientApi.$inject = ['$http', 'ItemCompleter'];
   function IngredientApi($http, ItemCompleter) {
-    return function(groupId) {
+    return function(group_id) {
       var that = this;
-      var ingredientUrl = '/api/'+groupId+'/ingredients/';
+      var ingredientUrl = '/api/'+group_id+'/ingredients/';
 
-      that.completer = new ItemCompleter(groupId);
+      that.completer = new ItemCompleter(group_id);
 
       that.rename = rename_ingredient;
       that.delete = delete_ingredient;
@@ -277,14 +277,14 @@
   services.factory('GroupApi', GroupApi);
   GroupApi.$inject = ['$localStorage', '$http', 'ListApi', 'Channel', 'IngredientApi'];
   function GroupApi($localStorage, $http, ListApi, Channel, IngredientApi) {
-    return function(groupId) {
+    return function(group_id) {
       var that = this;
-      var groupUrl = '/api/'+groupId+'/';
+      var groupUrl = '/api/'+group_id+'/';
       
       that._lists = {};
-      that.id = groupId;
-      that.ingredients = new IngredientApi(groupId);
-      that.channel = new Channel(groupId, on_connect, on_message);
+      that.id = group_id;
+      that.ingredients = new IngredientApi(group_id);
+      that.channel = new Channel(group_id, on_connect, on_message);
 
       that.set_data = set_data;
       that.commit = commit;
@@ -304,11 +304,11 @@
       }
   
       function commit() {
-        $localStorage[groupId] = angular.copy(that.data);
+        $localStorage[group_id] = angular.copy(that.data);
       }
   
       function revert() {
-        that.data = angular.copy($localStorage[groupId]);
+        that.data = angular.copy($localStorage[group_id]);
       }
   
       function refresh() {
@@ -331,10 +331,10 @@
         });
       }
 
-      function rename_list(listId, new_name) {
-        return that.list(listId).rename(new_name).then(function() {
+      function rename_list(list_id, new_name) {
+        return that.list(list_id).rename(new_name).then(function() {
 	  for(var i=0; i<that.data.lists.length; i++) {
-            if(that.data.lists[i].id == listId) {
+            if(that.data.lists[i].id == list_id) {
 	      that.data.lists[i].label = new_name;
 	      that.commit();
 	      break;
@@ -343,11 +343,11 @@
 	});
       }
   
-      function list(listId) {
-        if(!that._lists[listId]) {
-          that._lists[listId] = new ListApi(that, listId);
+      function list(list_id) {
+        if(!that._lists[list_id]) {
+          that._lists[list_id] = new ListApi(that, list_id);
         }
-        return that._lists[listId];
+        return that._lists[list_id];
       }
   
       function destroy() {
@@ -378,14 +378,14 @@
   services.factory('groupProvider', groupProvider);
   groupProvider.$inject = ['$rootScope', 'GroupApi'];
   function groupProvider($rootScope, GroupApi) {
-    return function(groupId) {
+    return function(group_id) {
       if($rootScope.group_api) {
-        if($rootScope.group_api.data.id == groupId) {
+        if($rootScope.group_api.data.id == group_id) {
           return $rootScope.group_api;
         }
         $rootScope.group_api.destroy();
       }
-      $rootScope.group_api = new GroupApi(groupId);
+      $rootScope.group_api = new GroupApi(group_id);
       return $rootScope.group_api;
     }
   }
@@ -393,12 +393,12 @@
   services.factory('ListApi', ListApi);
   ListApi.$inject = ['$http', '$localStorage'];
   function ListApi($http, $localStorage) {
-    return function(group_api, listId) {
+    return function(group_api, list_id) {
       var that = this;
-      var listUrl = '/api/'+group_api.id+'/lists/'+listId+'/';
-      var storageKey = group_api.id+'/'+listId;
+      var listUrl = '/api/'+group_api.id+'/lists/'+list_id+'/';
+      var storageKey = group_api.id+'/'+list_id;
   
-      that.id = listId;
+      that.id = list_id;
 
       that.set_data = set_data;
       that.commit = commit;
@@ -535,8 +535,8 @@
 
     title.set('welcome');
 
-    function set_group(groupId) {
-      $location.path('/'+groupId);
+    function set_group(group_id) {
+      $location.path('/'+group_id);
     }
   
     function create_group(group_name) {
@@ -553,8 +553,8 @@
   function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title) {
     var that = this;
 
-    that.groupId = $routeParams.groupId;
-    that.group = groupProvider(that.groupId);
+    that.group_id = $routeParams.group_id;
+    that.group = groupProvider(that.group_id);
     that.placeholder = [0,1,2,3,4,5,6,7,8,9];
 
     that.create_list = create_list;
@@ -566,8 +566,8 @@
     $localStorage.last = $location.path();
   
     function create_list(list_name) {
-      that.group.create_list(list_name).then(function(listId) {
-        $location.path('/'+that.groupId+'/'+listId);
+      that.group.create_list(list_name).then(function(list_id) {
+        $location.path('/'+that.group_id+'/'+list_id);
       });
     }
 
@@ -576,17 +576,17 @@
         templateUrl: '/static/partials/store.html',
         controller: 'StoreController as vm',
         resolve: {
-          groupId: function() { return that.groupId },
+          group_id: function() { return that.group_id },
           store: ['$http', function($http) {
-            return $http.get('/api/'+that.groupId+'/stores/'+store.id+'/')
+            return $http.get('/api/'+that.group_id+'/stores/'+store.id+'/')
               .then(function(resp) { return resp.data });
           }]
         }
       });
     }
 
-    function rename_list(listId) {
-      var list = that.group.list(listId).data.label;
+    function rename_list(list_id) {
+      var list = that.group.list(list_id).data.label;
       $modal.open({
         templateUrl: '/static/partials/dialog-rename.html',
         controller: 'RenameController as vm',
@@ -595,7 +595,7 @@
           title: function() { return 'List: '+list}
         }
       }).result.then(function(name) {
-        that.group.rename_list(listId, name);
+        that.group.rename_list(list_id, name);
       }, function(reason) {
         console.log('cancelled', reason);
       });
@@ -623,10 +623,10 @@
   function ListController($scope, $routeParams, $http, $location, $localStorage, groupProvider, title) {
     var that = this;
   
-    that.groupId = $routeParams.groupId;
-    that.listId = $routeParams.listId;
-    that.group = groupProvider(that.groupId);
-    that.list = that.group.list(that.listId);
+    that.group_id = $routeParams.group_id;
+    that.list_id = $routeParams.list_id;
+    that.group = groupProvider(that.group_id);
+    that.list = that.group.list(that.list_id);
 
     that.filter_items = that.group.ingredients.completer.filter;
     that.add_item = add_item;
@@ -665,11 +665,11 @@
   }
   
   controllers.controller('StoreController', StoreController);
-  StoreController.$inject = ['$modalInstance', '$http', 'groupId', 'store'];
-  function StoreController($modalInstance, $http, groupId, store_data) {
+  StoreController.$inject = ['$modalInstance', '$http', 'group_id', 'store'];
+  function StoreController($modalInstance, $http, group_id, store_data) {
     var that = this;
     console.log("store", store_data);
-    var storeUrl = '/api/'+groupId+'/stores/'+store_data.id+'/';
+    var storeUrl = '/api/'+group_id+'/stores/'+store_data.id+'/';
 
     that.store = store_data;
     that.set_label = set_label;
