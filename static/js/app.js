@@ -333,14 +333,14 @@
 
       function rename_list(list_id, new_name) {
         return that.list(list_id).rename(new_name).then(function() {
-	  for(var i=0; i<that.data.lists.length; i++) {
+          for(var i=0; i<that.data.lists.length; i++) {
             if(that.data.lists[i].id == list_id) {
-	      that.data.lists[i].label = new_name;
-	      that.commit();
-	      break;
-	    }
-	  }
-	});
+              that.data.lists[i].label = new_name;
+              that.commit();
+              break;
+            }
+          }
+        });
       }
   
       function list(list_id) {
@@ -441,11 +441,11 @@
           params: {
             'action': 'rename',
             'new_name': new_name
-	  }
-	}).success(function() {
-	  that.data.label = new_name;
-	  that.commit();
-	});
+          }
+        }).success(function() {
+          that.data.label = new_name;
+          that.commit();
+        });
       }
   
       function add_item(item) {
@@ -680,9 +680,9 @@
     function set_label() {
       $http.post(storeUrl, undefined, {
         params: {
-  'action': 'rename',
+          'action': 'rename',
           'label': that.store.label
-}
+        }
       }).success($modalInstance.$close).error(function() {
 console.log('Error updating label');
       });
@@ -791,7 +791,7 @@ console.log('Error updating label');
   }
 
   directives.directive('scrollTo', scrollTo);
-  scrollTo.$inject = ['$anchorScroll', '$location'];
+  scrollTo.$inject = ['$anchorScroll', '$location', '$window', '$interval'];
   function scrollTo($anchorScroll, $location) {
     return {
       restrict: 'A',
