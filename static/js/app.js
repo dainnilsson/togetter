@@ -269,6 +269,8 @@
             'action': 'delete',
             'ingredient': name
           }
+        }).then(function(resp) {
+          that.completer.remove_ingredient(name);
         });
       }
     }
@@ -529,6 +531,20 @@
     }
   }
 
+  services.factory('deleteDialog', deleteDialog);
+  deleteDialog.$inject = ['$modal'];
+  function deleteDialog($modal) {
+    return function(title) {
+      return $modal.open({
+        templateUrl: '/static/partials/dialog-delete.html',
+        controller: 'DeleteController as vm',
+        resolve: {
+          title: function() { return title }
+        }
+      }).result;
+    }
+  }
+
   /*
    * Controllers
    */
@@ -564,8 +580,8 @@
   }
   
   controllers.controller('GroupController', GroupController);
-  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title', 'renameDialog'];
-  function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title, renameDialog) {
+  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title', 'renameDialog', 'deleteDialog'];
+  function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title, renameDialog, deleteDialog) {
     var that = this;
 
     that.group_id = $routeParams.group_id;
@@ -576,6 +592,7 @@
     that.configure_store = configure_store;
     that.rename_list = rename_list;
     that.rename_ingredient = rename_ingredient;
+    that.delete_ingredient = delete_ingredient;
 
     title.set(that.group.data ? that.group.data.label : 'Group');
     $localStorage.last = $location.path();
@@ -612,6 +629,14 @@
     function rename_ingredient(ingredient) {
       renameDialog(ingredient, 'Ingredient: '+ingredient).then(function(name) {
         that.group.ingredients.rename(ingredient, name);
+      }, function(reason) {
+        console.log('cancelled', reason);
+      });
+    }
+
+    function delete_ingredient(ingredient) {
+      deleteDialog('Ingredient: '+ingredient).then(function() {
+        that.group.ingredients.delete(ingredient);
       }, function(reason) {
         console.log('cancelled', reason);
       });
@@ -710,6 +735,16 @@ console.log('Error updating label');
         $modalInstance.dismiss('Name unchanged');
       }
     }
+  }
+
+  controllers.controller('DeleteController', DeleteController);
+  DeleteController.$inject = ['$modalInstance', 'title'];
+  function DeleteController($modalInstance, title) {
+    var that = this;
+
+    that.title = title;
+    that.delete = $modalInstance.close;
+    that.dismiss = $modalInstance.dismiss;
   }
 
   /*
