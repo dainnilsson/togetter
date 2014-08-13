@@ -513,7 +513,22 @@
       }
     };
   }
-  
+
+  services.factory('renameDialog', renameDialog);
+  renameDialog.$inject = ['$modal'];
+  function renameDialog($modal) {
+    return function(name, title) {
+      return $modal.open({
+        templateUrl: '/static/partials/dialog-rename.html',
+        controller: 'RenameController as vm',
+        resolve: {
+          name: function() { return name },
+          title: function() { return title }
+        }
+      }).result;
+    }
+  }
+
   /*
    * Controllers
    */
@@ -549,8 +564,8 @@
   }
   
   controllers.controller('GroupController', GroupController);
-  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title'];
-  function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title) {
+  GroupController.$inject = ['$routeParams', '$http', '$localStorage', '$location', '$modal', 'groupProvider', 'title', 'renameDialog'];
+  function GroupController($routeParams, $http, $localStorage, $location, $modal, groupProvider, title, renameDialog) {
     var that = this;
 
     that.group_id = $routeParams.group_id;
@@ -587,14 +602,7 @@
 
     function rename_list(list_id) {
       var list = that.group.list(list_id).data.label;
-      $modal.open({
-        templateUrl: '/static/partials/dialog-rename.html',
-        controller: 'RenameController as vm',
-        resolve: {
-          name: function() { return list},
-          title: function() { return 'List: '+list}
-        }
-      }).result.then(function(name) {
+      renameDialog(list, 'List: '+list).then(function(name) {
         that.group.rename_list(list_id, name);
       }, function(reason) {
         console.log('cancelled', reason);
@@ -602,14 +610,7 @@
     }
 
     function rename_ingredient(ingredient) {
-      $modal.open({
-        templateUrl: '/static/partials/dialog-rename.html',
-        controller: 'RenameController as vm',
-        resolve: {
-          name: function() { return ingredient },
-          title: function() { return 'Ingredient: '+ingredient }
-        }
-      }).result.then(function(name) {
+      renameDialog(ingredient, 'Ingredient: '+ingredient).then(function(name) {
         that.group.ingredients.rename(ingredient, name);
       }, function(reason) {
         console.log('cancelled', reason);
