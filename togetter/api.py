@@ -88,11 +88,11 @@ class ListHandler(BaseHandler):
             else:
                 raise InvalidRequestError('Unsupported action: %s' % action)
             # Notify except token
-            token = self.request.get('token', None)
-            data = json.dumps(_list.data)
-            for listener in group.listeners:
-                if listener != token:
-                    channel.send_message(listener, data)
+            #token = self.request.get('token', None)
+            #data = json.dumps(_list.data)
+            #for listener in group.listeners:
+            #    if listener != token:
+            #        channel.send_message(listener, data)
         except EntityNotFoundError, InvalidRequestError:
             self.abort(404)
 
